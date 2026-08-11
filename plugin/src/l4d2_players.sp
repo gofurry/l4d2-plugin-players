@@ -25,6 +25,7 @@
 #include <l4d2_players/auto_join>
 #include <l4d2_players/suicide>
 #include <l4d2_players/bhop>
+#include <l4d2_players/nightvision>
 #include <l4d2_players/afk_monitor>
 #include <l4d2_players/commands>
 
@@ -62,6 +63,7 @@ public void OnPluginStart()
 	LP_InitializeHumanTeamWipe();
 	LP_InitializePopulation();
 	LP_InitializeBhop();
+	LP_InitializeNightVision();
 	LP_InitializeAfkMonitor();
 	LP_RegisterCommands();
 	AutoExecConfig(true, "l4d2_players");
@@ -98,6 +100,7 @@ public void OnMapStart()
 	g_LPMapEnding = false;
 	LP_StopAllAutoIdleHuds();
 	LP_ClearAllIdleKickHints();
+	LP_NightVisionMapStart();
 	LP_PrecacheCharacterModels();
 	LP_HumanTeamWipeMapStart();
 	LP_PopulationMapStart();
@@ -117,6 +120,7 @@ public void OnMapEnd()
 	LP_PopulationMapEnd();
 	LP_ResetAllIdentityLifecycleState();
 	LP_HumanTeamWipeMapEnd();
+	LP_NightVisionMapEnd();
 }
 
 public void OnPluginEnd()
@@ -126,6 +130,7 @@ public void OnPluginEnd()
 	LP_CancelAllAutoJoinTimers();
 	LP_CancelPopulationTimer();
 	LP_CancelHumanTeamWipeCheck();
+	LP_NightVisionPluginEnd();
 	LP_ShutdownEngine();
 }
 
@@ -151,12 +156,14 @@ public void OnClientDisconnect(int client)
 	LP_CancelAutoJoinTimer(client);
 	LP_IdentityClientDisconnected(client);
 	LP_HumanTeamWipeClientDisconnected(client);
+	LP_NightVisionClientDisconnected(client);
 	LP_RuntimeClientDisconnected(client);
 }
 
 public void OnClientCookiesCached(int client)
 {
 	LP_LoadBhopCookie(client);
+	LP_LoadNightVisionCookie(client);
 }
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
@@ -176,6 +183,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	}
 
 	LP_DetectRunCmdActivity(client, buttons, vel, angles, weapon);
+	LP_HandleNightVisionImpulse(client, impulse);
 	LP_ApplyBhop(client, buttons);
 	return Plugin_Continue;
 }

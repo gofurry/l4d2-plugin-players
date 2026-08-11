@@ -141,6 +141,7 @@ void LP_FinishFreeSpectate(int client, bool success)
 		LP_HumanTeamWipeLeaveForFreeSpectator(client);
 		LP_Print(client, "NowSpectating");
 		LP_Log("Free spectator verified: client=%N released_bot=%d.", client, originalBot);
+		LP_SyncNightVision(client);
 		return;
 	}
 

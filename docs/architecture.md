@@ -26,6 +26,7 @@ L4D2 server binary
 - `auto_join.inc`：每次真人连接一次的短延迟 Join 调度；必须等待 Population ready，只调用 `LP_JoinSurvivor`，最多 3 次过渡态尝试。
 - `midjoin.inc`：仅处理 newly-created Bot takeover 成功后的安全近队友放置和限定 T1/近战/药品装备。
 - `character.inc`：唯一的 8 角色名称/模型映射；同时供 `!csm`、新建 Bot 和 Identity Lifecycle 使用。
+- `nightvision.inc`：独立 QoL 模块；管理个人 `light_dynamic`、owner-only transmit、3 项菜单、档位 Cookie 和双击 F，只在 session 最终稳定后同步实体。
 - `runtime.inc`：保存每个客户端的活动、Idle、旁观、Auto Join 连接级选择和个人设置状态。
 - `hud.inc`：Auto Idle 只使用独立 CenterText 可见状态；Idle Kick 独立保留 HintText，两者不共享 enum 或清理路径。
 - `afk_monitor.inc`：唯一的长期 1 秒 Timer；没有 per-client 长期 Timer。

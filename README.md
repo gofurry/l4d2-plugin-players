@@ -2,7 +2,7 @@
 
 Self-contained player utilities and Survivor session management for Left 4 Dead 2.
 
-`L4D2 Players` 为求生之路 2 服务器提供自动加入、每局 baseline Survivor population、统一 human↔Bot Survivor identity、原生 Idle、Free Spectator、重新加入、5+ 中途出生/装备、自杀、个人自动连跳、角色切换和 AFK 管理。插件内置 `NextBotCreatePlayerBot<SurvivorBot>` 与 `CTerrorPlayer::RoundRespawn` 引擎调用，可在官方 `survivor_limit 4` 保持不变时按需创建 5–16 名 Survivor。
+`L4D2 Players` 为求生之路 2 服务器提供自动加入、每局 baseline Survivor population、统一 human↔Bot Survivor identity、原生 Idle、Free Spectator、重新加入、5+ 中途出生/装备、自杀、个人自动连跳、个人夜视仪、角色切换和 AFK 管理。插件内置 `NextBotCreatePlayerBot<SurvivorBot>` 与 `CTerrorPlayer::RoundRespawn` 引擎调用，可在官方 `survivor_limit 4` 保持不变时按需创建 5–16 名 Survivor。
 
 ## 功能
 
@@ -15,6 +15,7 @@ Self-contained player utilities and Survivor session management for Left 4 Dead 
 | `!zs` | 当前 Survivor 立即自杀 |
 | `!bhop` | 切换个人自动连跳；偏好由 ClientPrefs 保存 |
 | `!csm` | 在 8 名 Survivor 角色间切换，不持久化 |
+| `!ysy` | 打开个人夜视仪菜单 |
 
 Root 管理员可使用 `sm_l4dp_addbot [count]` 诊断 5+ 创建能力。该命令与 `!join` 共用同一内部创建函数、默认创建 1 个 Bot，并受 `sm_l4dp_survivor_limit` 限制；它不会出现在普通玩家菜单中。
 
@@ -28,7 +29,9 @@ Auto Join 每次连接只执行一次；玩家主动 `!spec` 后，本次连接�
 
 Idle 是事务性转换：记录 client serial、reason、原 identity、replacement Bot 与开始时间；只有 spectator、Bot 归属和 identity 全部收敛才提交 Engine Idle。验证超时会通过现有 takeover 状态机回滚到原 Survivor，不会把普通 Free Spectator 当成 Idle 成功。
 
-对应功能开关/容量为 `sm_l4dp_min_survivors`、`sm_l4dp_auto_join`、`sm_l4dp_midjoin_spawn_near_player` 和 `sm_l4dp_midjoin_loadout`，v1.0.0 均使用文档中的默认值。
+个人夜视仪由独立 `nightvision.inc` 管理，使用 parent 到玩家的纯白 `light_dynamic`，并通过 `SDKHook_SetTransmit` 仅向拥有者发送。菜单提供开关和 1–8 档（125–1000 distance）；亮度固定，档位不会被误用为 Source brightness。双击 F 可打开/关闭该菜单，不拦截原版 flashlight impulse 100。ClientPrefs 只保存档位；重连后默认关闭。Idle/旁观/死亡会删除光源，但本次连接的开启意愿可在 `!join`/复活后恢复。
+
+对应功能开关/容量为 `sm_l4dp_min_survivors`、`sm_l4dp_auto_join`、`sm_l4dp_midjoin_spawn_near_player`、`sm_l4dp_midjoin_loadout`、`sm_l4dp_nightvision_enabled` 和 `sm_l4dp_nightvision_default_level`，v1.0.0 均使用文档中的默认值。
 
 AFK Manager 默认在 120 秒无操作后自动 Idle，Auto Idle 倒计时使用独立 CenterText，不与 L4D2 原生 spectator/takeover HintText 竞争；Idle 600 秒后踢出。Free Spectator 可以无限旁观，不会因旁观时间被本插件踢出。Human Team Wipe 会在所有本轮参与真人真正死亡后杀死剩余普通 Survivor Bot，让游戏自然判定团灭。所有提示提供英文和简体中文翻译。
 

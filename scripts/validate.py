@@ -45,6 +45,9 @@ PARAMETERIZED_PHRASES = {
     "AutoIdleWarning": "{1:d}",
     "IdleKickWarning": "{1:d}",
     "IdleKickBroadcast": "{1:N}",
+    "NightVisionStatusOn": "{1:d}",
+    "NightVisionStatusOff": "{1:d}",
+    "NightVisionCurrentLevel": "{1:d}",
 }
 
 
@@ -719,6 +722,179 @@ def validate_afk_hint_sources(root: Path) -> None:
         raise ValueError("automatic Idle request must stop CenterText before LP_GoIdle")
 
 
+def validate_nightvision_sources(root: Path, phrases: dict[str, dict[str, str]]) -> None:
+    include_root = root / "plugin" / "include" / "l4d2_players"
+    definitions = (include_root / "definitions.inc").read_text(encoding="utf-8")
+    runtime = (include_root / "runtime.inc").read_text(encoding="utf-8")
+    config = (include_root / "config.inc").read_text(encoding="utf-8")
+    commands = (include_root / "commands.inc").read_text(encoding="utf-8")
+    nightvision = (include_root / "nightvision.inc").read_text(encoding="utf-8")
+    idle = (include_root / "idle.inc").read_text(encoding="utf-8")
+    takeover = (include_root / "survivor_engine.inc").read_text(encoding="utf-8")
+    spectate = (include_root / "spectate.inc").read_text(encoding="utf-8")
+    identity = (include_root / "identity.inc").read_text(encoding="utf-8")
+    population = (include_root / "population.inc").read_text(encoding="utf-8")
+    main_source = (root / "plugin" / "src" / "l4d2_players.sp").read_text(encoding="utf-8")
+    all_source = "\n".join(
+        path.read_text(encoding="utf-8") for path in (root / "plugin").rglob("*.*")
+    )
+
+    for fragment in (
+        "#define LP_NIGHTVISION_LEVEL_MIN 1",
+        "#define LP_NIGHTVISION_LEVEL_MAX 8",
+        "#define LP_NIGHTVISION_DEFAULT_LEVEL 2",
+        "#define LP_NIGHTVISION_DISTANCE_STEP 125.0",
+        "#define LP_NIGHTVISION_DOUBLE_PRESS_WINDOW 0.30",
+        "#define LP_NIGHTVISION_INPUT_COOLDOWN 0.45",
+        "#define LP_NIGHTVISION_FIXED_BRIGHTNESS 1",
+    ):
+        if fragment not in definitions:
+            raise ValueError(f"night vision fixed design invariant missing: {fragment}")
+
+    for field in (
+        "bool nightVisionEnabled;",
+        "int nightVisionLevel;",
+        "int nightVisionEntityRef;",
+        "float lastFlashlightPress;",
+        "float nightVisionInputCooldownUntil;",
+        "bool nightVisionMenuOpen;",
+    ):
+        if field not in runtime:
+            raise ValueError(f"night vision runtime field missing: {field}")
+    if "nightVisionEnabled = false;" not in runtime:
+        raise ValueError("night vision enabled desire must reset on every connection")
+
+    for fragment in (
+        'CreateConVar("sm_l4dp_nightvision_enabled", "1"',
+        'CreateConVar("sm_l4dp_nightvision_default_level", "2"',
+        "true, 1.0, true, 8.0",
+        "LP_NightVisionConfigurationChanged();",
+    ):
+        if fragment not in config:
+            raise ValueError(f"night vision configuration invariant missing: {fragment}")
+
+    required_module_fragments = (
+        'RegClientCookie("l4d2_players_nightvision_level"',
+        'CreateEntityByName("light_dynamic")',
+        'DispatchKeyValue(entity, "_light", "255 255 255 255")',
+        'DispatchKeyValue(entity, "brightness", "1")',
+        'DispatchKeyValue(entity, "distance", distance)',
+        'AcceptEntityInput(entity, "distance")',
+        'AcceptEntityInput(entity, "SetParent", client, entity)',
+        "EntIndexToEntRef(entity)",
+        "EntRefToEntIndex(g_LPPlayers[client].nightVisionEntityRef)",
+        "SDKHook(entity, SDKHook_SetTransmit, LP_NightVisionSetTransmit)",
+        "owner == client && LP_IsHumanClient(owner) ? Plugin_Continue : Plugin_Handled",
+        "LP_IsActiveSurvivor(client) && IsPlayerAlive(client)",
+        "LP_GetNightVisionDistance",
+        "LP_GetNightVisionEntity(client)",
+        "if (existing > MaxClients)",
+        "LP_HandleNightVisionImpulse(int client, int impulse)",
+        "if (impulse != 100)",
+        "nightVisionInputCooldownUntil = now + LP_NIGHTVISION_INPUT_COOLDOWN",
+        "if (g_LPPlayers[client].nightVisionMenuOpen)",
+        "LP_CloseNightVisionMenu(client)",
+        "LP_ShowNightVisionMenu(client)",
+        'HookEvent("player_death"',
+        'HookEvent("player_spawn"',
+        'HookEvent("player_team"',
+        'HookEvent("round_end"',
+        "LP_NightVisionMapEnd",
+        "LP_NightVisionClientDisconnected",
+    )
+    for fragment in required_module_fragments:
+        if fragment not in nightvision:
+            raise ValueError(f"isolated owner-only night vision invariant missing: {fragment}")
+    if nightvision.count("menu.AddItem(") != 3:
+        raise ValueError("night vision submenu must contain exactly three selectable items")
+    if nightvision.count("SetClientCookie(") != 1 or "nightVisionEnabled" in nightvision.split(
+        "SetClientCookie(", 1
+    )[1].split(";", 1)[0]:
+        raise ValueError("ClientPrefs must persist only the night vision level")
+    for forbidden in (
+        "m_bNightVisionOn",
+        "CreateTimer(",
+        "LP_GoIdle",
+        "LP_JoinSurvivor",
+        "LP_BeginTakeover",
+        "LP_CreateUnlimitedSurvivorBot",
+        "LP_ApplySurvivorIdentity",
+    ):
+        if forbidden in nightvision or (
+            forbidden == "m_bNightVisionOn" and forbidden in all_source
+        ):
+            raise ValueError(f"nightvision.inc crossed its QoL boundary: {forbidden}")
+    if "brightness" in nightvision.split("void LP_AdjustNightVisionLevel", 1)[1].split(
+        "public int LP_NightVisionMenuHandler", 1
+    )[0]:
+        raise ValueError("night vision levels must change distance, never Source brightness")
+
+    for fragment in (
+        'RegConsoleCmd("sm_ysy", LP_CommandNightVisionPublic)',
+        'menu.AddItem("nightvision", text',
+        'StrEqual(info, "nightvision")',
+    ):
+        if fragment not in commands:
+            raise ValueError(f"night vision command/main-menu integration missing: {fragment}")
+    for fragment in (
+        "#include <l4d2_players/nightvision>",
+        "LP_InitializeNightVision();",
+        "LP_LoadNightVisionCookie(client);",
+        "LP_HandleNightVisionImpulse(client, impulse);",
+        "LP_NightVisionMapStart();",
+        "LP_NightVisionMapEnd();",
+        "LP_NightVisionClientDisconnected(client);",
+    ):
+        if fragment not in main_source:
+            raise ValueError(f"night vision main lifecycle integration missing: {fragment}")
+    for name, content in (("idle.inc", idle), ("survivor_engine.inc", takeover), ("spectate.inc", spectate)):
+        if "LP_SyncNightVision" not in content:
+            raise ValueError(f"stable session completion does not synchronize night vision: {name}")
+    if "NightVision" in identity or "NightVision" in population:
+        raise ValueError("Identity and Population state machines must remain unaware of night vision")
+
+    required_phrases = (
+        "MenuNightVision",
+        "NightVisionStatusOn",
+        "NightVisionStatusOff",
+        "NightVisionIncrease",
+        "NightVisionDecrease",
+        "NightVisionEnabled",
+        "NightVisionDisabled",
+        "NightVisionCurrentLevel",
+        "NightVisionUnavailable",
+    )
+    for phrase in required_phrases:
+        if phrase not in phrases:
+            raise ValueError(f"night vision translation phrase missing: {phrase}")
+    expected_chinese = {
+        "MenuNightVision": "\u591c\u89c6\u4eea",
+        "NightVisionStatusOn": "\u591c\u89c6\u4eea\uff1a\u5f00\u542f\uff08{1}\u6863\uff09",
+        "NightVisionStatusOff": "\u591c\u89c6\u4eea\uff1a\u5173\u95ed\uff08{1}\u6863\uff09",
+        "NightVisionIncrease": "\u589e\u52a0\u6863\u6570",
+        "NightVisionDecrease": "\u51cf\u5c11\u6863\u6570",
+        "NightVisionEnabled": "\u591c\u89c6\u4eea\u5df2\u5f00\u542f\u3002",
+        "NightVisionDisabled": "\u591c\u89c6\u4eea\u5df2\u5173\u95ed\u3002",
+        "NightVisionCurrentLevel": "\u5f53\u524d\u4e3a {1} \u6863\u3002",
+        "NightVisionUnavailable": "\u5f53\u524d\u72b6\u6001\u65e0\u6cd5\u4f7f\u7528\u591c\u89c6\u4eea\u3002",
+    }
+    for phrase, expected in expected_chinese.items():
+        if phrases[phrase].get("chi") != expected:
+            raise ValueError(f"night vision Simplified Chinese translation drifted: {phrase}")
+
+    checklist = (root / "docs" / "v1.0-test-checklist.md").read_text(encoding="utf-8")
+    for fragment in (
+        "`!ysy`",
+        "\u53cc\u51fb F",
+        "1 \u2192 8",
+        "255 255 255 255",
+        "16 \u771f\u4eba",
+        "\u91cd\u8fde\u540e\u9ed8\u8ba4\u5173\u95ed",
+    ):
+        if fragment not in checklist:
+            raise ValueError(f"night vision acceptance scenario missing: {fragment}")
+
+
 def validate_free_spectator_sources(root: Path, phrases: dict[str, dict[str, str]]) -> None:
     commands = (root / "plugin" / "include" / "l4d2_players" / "commands.inc").read_text(
         encoding="utf-8"
@@ -922,6 +1098,7 @@ def main() -> int:
     validate_unlimited_survivor_creation(root)
     validate_auto_join_and_midjoin(root)
     validate_afk_hint_sources(root)
+    validate_nightvision_sources(root, phrases)
     validate_free_spectator_sources(root, phrases)
     validate_spectator_kick_removed(root, phrases)
     validate_release_lifecycle_docs(root)
@@ -930,6 +1107,7 @@ def main() -> int:
     print("Shared unlimited Survivor Bot creation invariants passed.")
     print("Connection-level Auto Join and newly-created 5+ mid-join isolation invariants passed.")
     print("Auto Idle CenterText and Idle Kick HintText lifecycle invariants passed.")
+    print("Personal owner-only light_dynamic night vision invariants passed.")
     print("Explicit Free Spectator and localized chat-prefix invariants passed.")
     print("Spectator Kick removal and current configuration invariants passed.")
     print("Release-blocker lifecycle documentation and Linux checklist invariants passed.")

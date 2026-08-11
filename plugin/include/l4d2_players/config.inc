@@ -21,6 +21,8 @@ ConVar g_LPCvarHumanTeamWipe;
 ConVar g_LPCvarAutoJoin;
 ConVar g_LPCvarMidJoinSpawnNearPlayer;
 ConVar g_LPCvarMidJoinLoadout;
+ConVar g_LPCvarNightVisionEnabled;
+ConVar g_LPCvarNightVisionDefaultLevel;
 
 bool g_LPEnabled;
 int g_LPSurvivorLimit;
@@ -40,6 +42,8 @@ bool g_LPHumanTeamWipeEnabled;
 bool g_LPAutoJoinEnabled;
 bool g_LPMidJoinSpawnNearPlayer;
 bool g_LPMidJoinLoadout;
+bool g_LPNightVisionEnabled;
+int g_LPNightVisionDefaultLevel = LP_NIGHTVISION_DEFAULT_LEVEL;
 
 void LP_CreateConfig()
 {
@@ -61,6 +65,8 @@ void LP_CreateConfig()
 	g_LPCvarAutoJoin = CreateConVar("sm_l4dp_auto_join", "1", "Automatically attempt to join each new human client to Survivors once per connection.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarMidJoinSpawnNearPlayer = CreateConVar("sm_l4dp_midjoin_spawn_near_player", "1", "Place newly created 5+ Survivors near a living teammate after verified takeover.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarMidJoinLoadout = CreateConVar("sm_l4dp_midjoin_loadout", "1", "Give the Players mid-join T1 loadout only after a newly created 5+ Survivor takeover.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_LPCvarNightVisionEnabled = CreateConVar("sm_l4dp_nightvision_enabled", "1", "Allow personal owner-only light_dynamic night vision.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_LPCvarNightVisionDefaultLevel = CreateConVar("sm_l4dp_nightvision_default_level", "2", "Default personal night vision level before a ClientPrefs level is saved.", FCVAR_NOTIFY, true, 1.0, true, 8.0);
 
 	g_LPCvarEnabled.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarSurvivorLimit.AddChangeHook(LP_ConVarChanged);
@@ -80,6 +86,8 @@ void LP_CreateConfig()
 	g_LPCvarAutoJoin.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarMidJoinSpawnNearPlayer.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarMidJoinLoadout.AddChangeHook(LP_ConVarChanged);
+	g_LPCvarNightVisionEnabled.AddChangeHook(LP_ConVarChanged);
+	g_LPCvarNightVisionDefaultLevel.AddChangeHook(LP_ConVarChanged);
 }
 
 public void LP_ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
@@ -145,6 +153,17 @@ void LP_ApplyConfiguration()
 	g_LPAutoJoinEnabled = g_LPCvarAutoJoin.BoolValue;
 	g_LPMidJoinSpawnNearPlayer = g_LPCvarMidJoinSpawnNearPlayer.BoolValue;
 	g_LPMidJoinLoadout = g_LPCvarMidJoinLoadout.BoolValue;
+	g_LPNightVisionEnabled = g_LPCvarNightVisionEnabled.BoolValue;
+	g_LPNightVisionDefaultLevel = g_LPCvarNightVisionDefaultLevel.IntValue;
+	if (g_LPNightVisionDefaultLevel < LP_NIGHTVISION_LEVEL_MIN)
+	{
+		g_LPNightVisionDefaultLevel = LP_NIGHTVISION_LEVEL_MIN;
+	}
+	else if (g_LPNightVisionDefaultLevel > LP_NIGHTVISION_LEVEL_MAX)
+	{
+		g_LPNightVisionDefaultLevel = LP_NIGHTVISION_LEVEL_MAX;
+	}
+	LP_NightVisionConfigurationChanged();
 	LP_PopulationConfigurationChanged();
 	if (!g_LPEnabled || !g_LPAutoJoinEnabled)
 	{

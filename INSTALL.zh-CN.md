@@ -80,11 +80,15 @@ sm_l4dp_addbot 1
 sm_l4dp_auto_join "1"
 sm_l4dp_midjoin_spawn_near_player "1"
 sm_l4dp_midjoin_loadout "1"
+sm_l4dp_nightvision_enabled "1"
+sm_l4dp_nightvision_default_level "2"
 ```
 
 Auto Join 在真人完全进入游戏后先等待 baseline reconcile，再复用 `!join` 路径，过渡状态最多进行 3 次有界尝试。容量已满时玩家保持 Free Spectator；主动 `!spec` 会抑制本次连接剩余时间（包括 changelevel 后）的 Auto Join，手动 `!join` 不受影响。
 
 出生位置和装备只应用于“没有自己的 Idle Bot、没有现有空闲 Bot、由 Players 新建 Bot、takeover 最终成功”的 Join。安全位置检查失败时保留引擎出生点；近战优先复用地图中实际存在的 melee script，再尝试内置合法集合，全部失败时至少给予 pistol。该策略绝不会清理 `!afk` → `!join` 或接管现有 Bot 的武器。
+
+夜视仪使用 `!ysy` 或玩家主菜单打开，也可通过 0.30 秒内双击 F 打开/关闭该子菜单。它不会消费 impulse 100，因此单击 F 的原版手电筒行为不变。夜视仪共 8 档，distance 为 125–1000，只保存档位 Cookie；重连后开启状态始终重置为关闭。
 
 ## 5. Idle 事务与故障诊断
 

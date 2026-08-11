@@ -298,6 +298,7 @@ public void LP_FrameVerifyIdle(any serial)
 		LP_Log("Idle transaction committed: reason=%s client=%N bot=%d character=%d model=%s.",
 			reason == LP_IDLE_REASON_AUTOMATIC ? "automatic" : "manual",
 			stateClient, expectedBot, originalCharacter, originalModel);
+		LP_SyncNightVision(stateClient);
 		return;
 	}
 	if (g_LPIdleRollbackPending[stateClient])

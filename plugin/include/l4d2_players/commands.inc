@@ -15,6 +15,7 @@ void LP_RegisterCommands()
 	RegConsoleCmd("sm_zs", LP_CommandSuicidePublic);
 	RegConsoleCmd("sm_bhop", LP_CommandBhopPublic);
 	RegConsoleCmd("sm_csm", LP_CommandCharacterPublic);
+	RegConsoleCmd("sm_ysy", LP_CommandNightVisionPublic);
 	RegAdminCmd("sm_l4dp_addbot", LP_CommandAddBot, ADMFLAG_ROOT,
 		"Admin diagnostic: create unlimited Survivor Bots through the Players engine path. Usage: sm_l4dp_addbot [count]");
 }
@@ -88,6 +89,8 @@ void LP_ShowPlayerMenu(int client)
 	menu.AddItem("bhop", text, g_LPBhopEnabled ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 	Format(text, sizeof(text), "%T", "MenuCharacter", client);
 	menu.AddItem("character", text, g_LPCsmEnabled ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+	Format(text, sizeof(text), "%T", "MenuNightVision", client);
+	menu.AddItem("nightvision", text, g_LPNightVisionEnabled ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
@@ -111,6 +114,7 @@ public int LP_PlayerMenuHandler(Menu menu, MenuAction action, int client, int it
 	else if (StrEqual(info, "suicide")) LP_CommandSuicide(client);
 	else if (StrEqual(info, "bhop")) LP_CommandBhop(client);
 	else if (StrEqual(info, "character")) LP_CommandCharacter(client);
+	else if (StrEqual(info, "nightvision")) LP_CommandNightVision(client);
 	return 0;
 }
 
@@ -130,3 +134,4 @@ public Action LP_CommandJoinPublic(int client, int args) { return LP_CommandJoin
 public Action LP_CommandSuicidePublic(int client, int args) { return LP_CommandSuicide(client); }
 public Action LP_CommandBhopPublic(int client, int args) { return LP_CommandBhop(client); }
 public Action LP_CommandCharacterPublic(int client, int args) { return LP_CommandCharacter(client); }
+public Action LP_CommandNightVisionPublic(int client, int args) { return LP_CommandNightVision(client); }

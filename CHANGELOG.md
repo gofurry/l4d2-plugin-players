@@ -1,7 +1,13 @@
 # Changelog
 
-## 1.0.0 - 2026-08-11
+## 1.0.0 - 2026-08-12
 
+- Added isolated personal night vision in `nightvision.inc`, using one parented pure-white `light_dynamic` per enabled living human Survivor and owner-only `SDKHook_SetTransmit` visibility.
+- Added eight fixed distance levels from 125 through 1000 while keeping Source brightness fixed; ClientPrefs stores only the 1–8 level, never the enabled state.
+- Added `!ysy`, the main-menu Night Vision entry, and a three-action submenu for toggle/increase/decrease with immediate in-place distance updates.
+- Added double-F menu open/close detection around flashlight impulse 100 with a 0.30-second window and 0.45-second cooldown, without consuming or changing the original flashlight input.
+- Added independent light lifecycle cleanup/restoration for Idle, Join, Free Spectator, death/respawn, round/map end, disconnect, and configuration disable without adding night vision state to Population, Identity, or session transitions.
+- Added `sm_l4dp_nightvision_enabled` and `sm_l4dp_nightvision_default_level`, defaulting to `1` and `2` respectively.
 - Added a unified Survivor Identity Lifecycle around `player_bot_replace` and `bot_player_replace`; character/model identity now transfers in both directions and is verified again on the next frame for Idle, existing-Bot, newly-created-Bot, and Auto Join takeovers.
 - Added `sm_l4dp_min_survivors` (default 4) and a bounded, initialization-only Population Manager for map start, round start, and the first human client. It uses the existing unlimited creation engine, never writes Valve `survivor_limit`, and does not replenish combat deaths or Human Team Wipe.
 - Ordered Auto Join behind successful baseline reconciliation so the first standard Coop human receives one controlled Survivor plus three normal Survivor Bots; newly-created 5+ mid-join behavior remains isolated to post-baseline expansion.

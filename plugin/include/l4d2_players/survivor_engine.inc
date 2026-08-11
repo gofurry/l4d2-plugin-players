@@ -210,6 +210,7 @@ void LP_FinishTakeover(int client, bool success)
 		{
 			LP_IdleRollbackFinished(client, true, bot);
 		}
+		LP_SyncNightVision(client);
 	}
 	else
 	{

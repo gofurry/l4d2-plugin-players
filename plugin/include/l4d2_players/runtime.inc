@@ -23,6 +23,16 @@ enum struct LPPlayerRuntime
 	bool autoJoinSuppressed;
 	int autoJoinAttempts;
 	Handle autoJoinTimer;
+	bool nightVisionEnabled;
+	int nightVisionLevel;
+	int nightVisionEntityRef;
+	float lastFlashlightPress;
+	float nightVisionInputCooldownUntil;
+	bool nightVisionMenuOpen;
+	Handle nightVisionMenu;
+	bool nightVisionCookieLoaded;
+	bool nightVisionLevelFromCookie;
+	bool flashlightImpulseLatched;
 }
 
 LPPlayerRuntime g_LPPlayers[MAXPLAYERS + 1];
@@ -50,6 +60,18 @@ void LP_ResetClientRuntime(int client)
 	g_LPPlayers[client].autoJoinSuppressed = false;
 	g_LPPlayers[client].autoJoinAttempts = 0;
 	g_LPPlayers[client].autoJoinTimer = null;
+	g_LPPlayers[client].nightVisionEnabled = false;
+	g_LPPlayers[client].nightVisionLevel = g_LPNightVisionDefaultLevel >= LP_NIGHTVISION_LEVEL_MIN
+		&& g_LPNightVisionDefaultLevel <= LP_NIGHTVISION_LEVEL_MAX
+		? g_LPNightVisionDefaultLevel : LP_NIGHTVISION_DEFAULT_LEVEL;
+	g_LPPlayers[client].nightVisionEntityRef = INVALID_ENT_REFERENCE;
+	g_LPPlayers[client].lastFlashlightPress = 0.0;
+	g_LPPlayers[client].nightVisionInputCooldownUntil = 0.0;
+	g_LPPlayers[client].nightVisionMenuOpen = false;
+	g_LPPlayers[client].nightVisionMenu = null;
+	g_LPPlayers[client].nightVisionCookieLoaded = false;
+	g_LPPlayers[client].nightVisionLevelFromCookie = false;
+	g_LPPlayers[client].flashlightImpulseLatched = false;
 }
 
 void LP_ResetRuntime()
@@ -96,6 +118,7 @@ void LP_RuntimeClientPutInServer(int client)
 	if (!IsFakeClient(client) && AreClientCookiesCached(client))
 	{
 		LP_LoadBhopCookie(client);
+		LP_LoadNightVisionCookie(client);
 	}
 }
 

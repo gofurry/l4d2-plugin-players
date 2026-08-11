@@ -54,6 +54,63 @@
 		"chi"		"更换角色"
 	}
 
+	"MenuNightVision"
+	{
+		"en"		"Night vision"
+		"chi"		"夜视仪"
+	}
+
+	"NightVisionStatusOn"
+	{
+		"#format"	"{1:d}"
+		"en"		"Night vision: On (Level {1})"
+		"chi"		"夜视仪：开启（{1}档）"
+	}
+
+	"NightVisionStatusOff"
+	{
+		"#format"	"{1:d}"
+		"en"		"Night vision: Off (Level {1})"
+		"chi"		"夜视仪：关闭（{1}档）"
+	}
+
+	"NightVisionIncrease"
+	{
+		"en"		"Increase level"
+		"chi"		"增加档数"
+	}
+
+	"NightVisionDecrease"
+	{
+		"en"		"Decrease level"
+		"chi"		"减少档数"
+	}
+
+	"NightVisionEnabled"
+	{
+		"en"		"Night vision enabled."
+		"chi"		"夜视仪已开启。"
+	}
+
+	"NightVisionDisabled"
+	{
+		"en"		"Night vision disabled."
+		"chi"		"夜视仪已关闭。"
+	}
+
+	"NightVisionCurrentLevel"
+	{
+		"#format"	"{1:d}"
+		"en"		"Current level: {1}."
+		"chi"		"当前为 {1} 档。"
+	}
+
+	"NightVisionUnavailable"
+	{
+		"en"		"Night vision cannot be used in your current state."
+		"chi"		"当前状态无法使用夜视仪。"
+	}
+
 	"CharacterMenuTitle"
 	{
 		"en"		"Choose a survivor"
