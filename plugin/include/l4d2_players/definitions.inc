@@ -3,14 +3,12 @@
 #endif
 #define _l4d2_players_definitions_included
 
-#define LP_VERSION "0.3.4"
+#define LP_VERSION "0.3.5"
 #define LP_TEAM_UNASSIGNED 0
 #define LP_TEAM_SPECTATOR 1
 #define LP_TEAM_SURVIVOR 2
 #define LP_MAX_SURVIVORS 16
 #define LP_JOIN_QUEUE_SIZE MAXPLAYERS
-#define LP_CREATE_MAX_FRAMES 64
-#define LP_CREATE_TIMEOUT 1.0
 #define LP_STATE_VERIFY_MAX_FRAMES 64
 #define LP_STATE_VERIFY_TIMEOUT 1.0
 #define LP_SPECTATE_STABLE_FRAMES 4

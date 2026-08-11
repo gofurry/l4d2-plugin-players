@@ -250,6 +250,71 @@ int LP_FindAvailableSurvivorBot()
 	return 0;
 }
 
+int LP_CreateUnlimitedSurvivorBot(const char[] context)
+{
+	if (!g_LPEnabled || g_LPMapEnding)
+	{
+		LP_LogError("Unlimited Survivor Bot creation rejected: context=%s plugin_enabled=%d map_ending=%d.",
+			context, g_LPEnabled ? 1 : 0, g_LPMapEnding ? 1 : 0);
+		return 0;
+	}
+	if (!LP_EngineIsReady())
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s required SDKCalls are unavailable.", context);
+		return 0;
+	}
+
+	int survivorCount = LP_GetSurvivorCount();
+	int survivorCapacity = LP_GetConfiguredSurvivorCapacity();
+	if (survivorCount >= survivorCapacity)
+	{
+		LP_LogError("Unlimited Survivor Bot creation rejected: context=%s survivor_count=%d Players_limit=%d.",
+			context, survivorCount, survivorCapacity);
+		return 0;
+	}
+	if (GetClientCount(false) >= MaxClients)
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s no client slot (clients=%d MaxClients=%d).",
+			context, GetClientCount(false), MaxClients);
+		return 0;
+	}
+
+	int bot = LP_EngineCreateSurvivorBot("Players Survivor Bot");
+	if (bot < 1 || bot > MaxClients || !IsValidEntity(bot))
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s NextBot returned invalid client index %d.", context, bot);
+		return 0;
+	}
+	if (!IsClientInGame(bot) || !IsFakeClient(bot))
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s client=%d in_game=%d fake=%d.",
+			context, bot, IsClientInGame(bot) ? 1 : 0, IsClientInGame(bot) && IsFakeClient(bot) ? 1 : 0);
+		return 0;
+	}
+
+	ChangeClientTeam(bot, LP_TEAM_SURVIVOR);
+	if (GetClientTeam(bot) != LP_TEAM_SURVIVOR)
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s bot=%d team transition produced team=%d.",
+			context, bot, GetClientTeam(bot));
+		return 0;
+	}
+	if (!IsPlayerAlive(bot))
+	{
+		LP_EngineRoundRespawn(bot);
+	}
+	if (!IsPlayerAlive(bot))
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s bot=%d RoundRespawn did not make the Bot alive.",
+			context, bot);
+		return 0;
+	}
+
+	LP_Log("Unlimited Survivor Bot created: context=%s bot=%d survivors=%d/%d clients=%d/%d.",
+		context, bot, LP_GetSurvivorCount(), survivorCapacity, GetClientCount(false), MaxClients);
+	return bot;
+}
+
 bool LP_CanCreateSurvivorBot(int client)
 {
 	if (!LP_IsHumanClient(client))
@@ -258,6 +323,7 @@ bool LP_CanCreateSurvivorBot(int client)
 	}
 	if (!LP_EngineIsReady())
 	{
+		LP_LogError("Join creation precheck failed for client=%d: required SDKCalls are unavailable.", client);
 		LP_Print(client, "JoinFailed");
 		return false;
 	}
@@ -268,6 +334,8 @@ bool LP_CanCreateSurvivorBot(int client)
 	}
 	if (GetClientCount(false) >= MaxClients)
 	{
+		LP_LogError("Join creation precheck failed for client=%d: no client slot (clients=%d MaxClients=%d).",
+			client, GetClientCount(false), MaxClients);
 		LP_Print(client, "NoClientSlot");
 		return false;
 	}

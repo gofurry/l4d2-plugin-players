@@ -1,4 +1,4 @@
-// L4D2 Players v0.3.4 example configuration.
+// L4D2 Players v0.3.5 example configuration.
 // Copy desired values to cfg/sourcemod/l4d2_players.cfg after the plugin generates it.
 
 sm_l4dp_enabled "1"

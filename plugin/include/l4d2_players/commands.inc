@@ -15,6 +15,49 @@ void LP_RegisterCommands()
 	RegConsoleCmd("sm_zs", LP_CommandSuicidePublic);
 	RegConsoleCmd("sm_bhop", LP_CommandBhopPublic);
 	RegConsoleCmd("sm_csm", LP_CommandCharacterPublic);
+	RegAdminCmd("sm_l4dp_addbot", LP_CommandAddBot, ADMFLAG_ROOT,
+		"Admin diagnostic: create unlimited Survivor Bots through the Players engine path. Usage: sm_l4dp_addbot [count]");
+}
+
+public Action LP_CommandAddBot(int client, int args)
+{
+	if (!g_LPEnabled || g_LPMapEnding)
+	{
+		ReplyToCommand(client, "[Players] Diagnostic Bot creation is unavailable while the plugin is disabled or the map is ending.");
+		return Plugin_Handled;
+	}
+
+	int requested = 1;
+	if (args >= 1)
+	{
+		char value[16];
+		GetCmdArg(1, value, sizeof(value));
+		requested = StringToInt(value);
+		if (requested < 1)
+		{
+			ReplyToCommand(client, "[Players] Usage: sm_l4dp_addbot [positive count]");
+			return Plugin_Handled;
+		}
+	}
+
+	int created = 0;
+	for (int i = 0; i < requested; i++)
+	{
+		int bot = LP_CreateUnlimitedSurvivorBot("admin_diagnostic");
+		if (bot <= 0)
+		{
+			break;
+		}
+		created++;
+	}
+
+	ReplyToCommand(client, "[Players] Admin diagnostic created %d/%d requested Survivor Bots; Survivors=%d, Players limit=%d.",
+		created, requested, LP_GetSurvivorCount(), LP_GetConfiguredSurvivorCapacity());
+	if (created < requested)
+	{
+		LP_LogError("Admin diagnostic stopped after %d/%d Bots; see the preceding creation failure.", created, requested);
+	}
+	return Plugin_Handled;
 }
 
 void LP_ShowPlayerMenu(int client)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.5 - 2026-08-11
+
+- Replaced the Director-based Bot request with self-contained `NextBotCreatePlayerBot<SurvivorBot>` creation followed by team assignment and `CTerrorPlayer::RoundRespawn` when needed.
+- Added Windows call-target resolution and Linux symbols for both required engine functions; all five Windows signatures are uniquely matched against local build `23990068`.
+- Kept Valve `survivor_limit` untouched at 4; `sm_l4dp_survivor_limit` remains only the Players-managed 1–16 capacity.
+- Routed `!join` through the unlimited creation path when no owned or available Bot exists.
+- Added root-only `sm_l4dp_addbot [count]` diagnostics using exactly the same internal creation function as `!join`.
+- Added explicit creation-stage logging for SDKCall, client-slot, capacity, client validation, team transition, and respawn failures.
+
 ## 0.3.4 - 2026-08-11
 
 - Replaced Auto Idle `HintText` warnings with independently managed `PrintCenterText` countdowns, avoiding the native L4D2 spectator/takeover HintText channel entirely.

@@ -5,13 +5,6 @@
 
 int g_LPJoinQueue[LP_JOIN_QUEUE_SIZE];
 int g_LPJoinQueueCount;
-bool g_LPCreatePending;
-int g_LPPendingJoinSerial;
-float g_LPCreateStartedAt;
-int g_LPCreateFrames;
-int g_LPBotSnapshot[MAXPLAYERS + 1];
-int g_LPBotSnapshotCount;
-int g_LPNextBotCharacter;
 
 void LP_InitializeJoin()
 {
@@ -22,10 +15,6 @@ void LP_CancelJoinQueue()
 {
 	LP_CancelAllTakeovers();
 	g_LPJoinQueueCount = 0;
-	g_LPCreatePending = false;
-	g_LPPendingJoinSerial = 0;
-	g_LPCreateFrames = 0;
-	g_LPBotSnapshotCount = 0;
 	for (int client = 1; client <= MaxClients; client++)
 	{
 		g_LPBotReservation[client] = 0;
@@ -34,10 +23,6 @@ void LP_CancelJoinQueue()
 
 bool LP_IsJoinQueued(int serial)
 {
-	if (g_LPCreatePending && g_LPPendingJoinSerial == serial)
-	{
-		return true;
-	}
 	for (int i = 0; i < g_LPJoinQueueCount; i++)
 	{
 		if (g_LPJoinQueue[i] == serial)
@@ -84,46 +69,9 @@ int LP_DequeueJoin()
 	return 0;
 }
 
-void LP_SnapshotSurvivorBots()
-{
-	g_LPBotSnapshotCount = 0;
-	for (int bot = 1; bot <= MaxClients; bot++)
-	{
-		if (LP_IsSurvivorBot(bot))
-		{
-			g_LPBotSnapshot[g_LPBotSnapshotCount++] = GetClientUserId(bot);
-		}
-	}
-}
-
-bool LP_BotWasInSnapshot(int bot)
-{
-	int userId = GetClientUserId(bot);
-	for (int i = 0; i < g_LPBotSnapshotCount; i++)
-	{
-		if (g_LPBotSnapshot[i] == userId)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-int LP_FindNewSurvivorBot()
-{
-	for (int bot = 1; bot <= MaxClients; bot++)
-	{
-		if (LP_IsSurvivorBot(bot) && !LP_BotWasInSnapshot(bot) && g_LPBotReservation[bot] == 0)
-		{
-			return bot;
-		}
-	}
-	return 0;
-}
-
 void LP_ProcessJoinQueue()
 {
-	if (g_LPCreatePending || LP_HasPendingTakeover() || g_LPMapEnding || !g_LPEnabled)
+	if (LP_HasPendingTakeover() || g_LPMapEnding || !g_LPEnabled)
 	{
 		return;
 	}
@@ -175,63 +123,26 @@ void LP_ProcessJoinQueue()
 		return;
 	}
 
-	g_LPCreatePending = true;
-	g_LPPendingJoinSerial = serial;
-	g_LPCreateStartedAt = GetGameTime();
-	g_LPCreateFrames = 0;
-	LP_SnapshotSurvivorBots();
-	LP_EngineAddSurvivorBot(g_LPNextBotCharacter);
-	g_LPNextBotCharacter = (g_LPNextBotCharacter + 1) % 4;
-	RequestFrame(LP_FrameVerifyCreatedBot);
+	bot = LP_CreateUnlimitedSurvivorBot("join");
+	if (bot <= 0)
+	{
+		LP_Print(client, "BotCreationFailed");
+		RequestFrame(LP_FrameContinueJoinQueue);
+		return;
+	}
+
+	g_LPBotReservation[bot] = serial;
+	if (!LP_BindAndTakeOverBot(client, bot))
+	{
+		g_LPBotReservation[bot] = 0;
+		LP_Print(client, "TakeoverFailed");
+		RequestFrame(LP_FrameContinueJoinQueue);
+	}
 }
 
 public void LP_FrameContinueJoinQueue(any data)
 {
 	LP_ProcessJoinQueue();
-}
-
-public void LP_FrameVerifyCreatedBot(any data)
-{
-	if (!g_LPCreatePending)
-	{
-		return;
-	}
-
-	int client = GetClientFromSerial(g_LPPendingJoinSerial);
-	if (!LP_IsHumanClient(client))
-	{
-		g_LPCreatePending = false;
-		g_LPPendingJoinSerial = 0;
-		LP_ProcessJoinQueue();
-		return;
-	}
-
-	int bot = LP_FindNewSurvivorBot();
-	if (bot > 0)
-	{
-		g_LPBotReservation[bot] = g_LPPendingJoinSerial;
-		g_LPCreatePending = false;
-		g_LPPendingJoinSerial = 0;
-		if (!LP_BindAndTakeOverBot(client, bot))
-		{
-			g_LPBotReservation[bot] = 0;
-			LP_Print(client, "TakeoverFailed");
-			LP_ProcessJoinQueue();
-		}
-		return;
-	}
-
-	g_LPCreateFrames++;
-	if (g_LPCreateFrames >= LP_CREATE_MAX_FRAMES || GetGameTime() - g_LPCreateStartedAt >= LP_CREATE_TIMEOUT)
-	{
-		LP_LogError("Survivor bot creation timed out for %N.", client);
-		LP_Print(client, "BotCreationFailed");
-		g_LPCreatePending = false;
-		g_LPPendingJoinSerial = 0;
-		LP_ProcessJoinQueue();
-		return;
-	}
-	RequestFrame(LP_FrameVerifyCreatedBot);
 }
 
 bool LP_JoinSurvivor(int client)

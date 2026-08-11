@@ -7,8 +7,8 @@ GameData g_LPGameData;
 Handle g_LPSDKGoAwayFromKeyboard;
 Handle g_LPSDKSetHumanSpectator;
 Handle g_LPSDKTakeOverBot;
-Handle g_LPSDKAddSurvivorBot;
-Address g_LPDirector = Address_Null;
+Handle g_LPSDKNextBotCreateSurvivorBot;
+Handle g_LPSDKRoundRespawn;
 bool g_LPEngineReady;
 
 void LP_EngineFail(const char[] name)
@@ -22,13 +22,6 @@ void LP_InitializeEngine()
 	if (g_LPGameData == null)
 	{
 		LP_EngineFail("l4d2_players.txt");
-		return;
-	}
-
-	g_LPDirector = g_LPGameData.GetAddress("CDirector");
-	if (g_LPDirector == Address_Null)
-	{
-		LP_EngineFail("CDirector");
 		return;
 	}
 
@@ -76,18 +69,49 @@ void LP_InitializeEngine()
 		return;
 	}
 
-	StartPrepSDKCall(SDKCall_Raw);
-	if (!PrepSDKCall_SetFromConf(g_LPGameData, SDKConf_Signature, "CDirector::AddSurvivorBot"))
+	Address createAddress = g_LPGameData.GetAddress("NextBotCreatePlayerBot<SurvivorBot>");
+	if (createAddress == Address_Null)
 	{
-		LP_EngineFail("CDirector::AddSurvivorBot");
+		LP_EngineFail("NextBotCreatePlayerBot<SurvivorBot> address");
 		return;
 	}
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
-	g_LPSDKAddSurvivorBot = EndPrepSDKCall();
-	if (g_LPSDKAddSurvivorBot == null)
+	int operatingSystem = g_LPGameData.GetOffset("OS");
+	if (operatingSystem == 1)
 	{
-		LP_EngineFail("CDirector::AddSurvivorBot handle");
+		Address relativeOffset = view_as<Address>(LoadFromAddress(createAddress + view_as<Address>(1), NumberType_Int32));
+		createAddress += relativeOffset + view_as<Address>(5);
+	}
+	else if (operatingSystem != 2)
+	{
+		LP_EngineFail("OS offset");
+		return;
+	}
+
+	StartPrepSDKCall(SDKCall_Static);
+	if (!PrepSDKCall_SetAddress(createAddress))
+	{
+		LP_EngineFail("NextBotCreatePlayerBot<SurvivorBot>");
+		return;
+	}
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_SetReturnInfo(SDKType_CBasePlayer, SDKPass_Pointer);
+	g_LPSDKNextBotCreateSurvivorBot = EndPrepSDKCall();
+	if (g_LPSDKNextBotCreateSurvivorBot == null)
+	{
+		LP_EngineFail("NextBotCreatePlayerBot<SurvivorBot> handle");
+		return;
+	}
+
+	StartPrepSDKCall(SDKCall_Player);
+	if (!PrepSDKCall_SetFromConf(g_LPGameData, SDKConf_Signature, "CTerrorPlayer::RoundRespawn"))
+	{
+		LP_EngineFail("CTerrorPlayer::RoundRespawn");
+		return;
+	}
+	g_LPSDKRoundRespawn = EndPrepSDKCall();
+	if (g_LPSDKRoundRespawn == null)
+	{
+		LP_EngineFail("CTerrorPlayer::RoundRespawn handle");
 		return;
 	}
 
@@ -100,7 +124,8 @@ void LP_ShutdownEngine()
 	delete g_LPSDKGoAwayFromKeyboard;
 	delete g_LPSDKSetHumanSpectator;
 	delete g_LPSDKTakeOverBot;
-	delete g_LPSDKAddSurvivorBot;
+	delete g_LPSDKNextBotCreateSurvivorBot;
+	delete g_LPSDKRoundRespawn;
 	delete g_LPGameData;
 	g_LPEngineReady = false;
 }
@@ -125,11 +150,15 @@ bool LP_EngineTakeOverBot(int client)
 	return g_LPEngineReady && SDKCall(g_LPSDKTakeOverBot, client, true);
 }
 
-void LP_EngineAddSurvivorBot(int character)
+int LP_EngineCreateSurvivorBot(const char[] name)
+{
+	return g_LPEngineReady ? SDKCall(g_LPSDKNextBotCreateSurvivorBot, name) : 0;
+}
+
+void LP_EngineRoundRespawn(int client)
 {
 	if (g_LPEngineReady)
 	{
-		SDKCall(g_LPSDKAddSurvivorBot, g_LPDirector, character);
+		SDKCall(g_LPSDKRoundRespawn, client);
 	}
 }
-

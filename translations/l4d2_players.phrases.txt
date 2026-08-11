@@ -182,8 +182,8 @@
 
 	"BotCreationFailed"
 	{
-		"en"		"Survivor Bot creation timed out."
-		"chi"		"创建生还者机器人超时。"
+		"en"		"The Survivor Bot could not be created. Check the server log."
+		"chi"		"无法创建生还者机器人，请检查服务器日志。"
 	}
 
 	"BhopEnabled"

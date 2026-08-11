@@ -2,7 +2,7 @@
 
 Self-contained player utilities and Survivor session management for Left 4 Dead 2.
 
-`L4D2 Players` 为求生之路 2 服务器提供统一的玩家菜单、原生 Idle、Free Spectator、重新加入、自杀、个人自动连跳、角色切换和 AFK 管理。插件自行封装 Survivor Bot 创建、human/bot 绑定与 takeover，不依赖 Left4DHooks、MultiSlots、CreateSurvivorBot 或 Stats。
+`L4D2 Players` 为求生之路 2 服务器提供统一的玩家菜单、原生 Idle、Free Spectator、重新加入、自杀、个人自动连跳、角色切换和 AFK 管理。插件内置 `NextBotCreatePlayerBot<SurvivorBot>` 与 `CTerrorPlayer::RoundRespawn` 引擎调用，可在官方 `survivor_limit 4` 保持不变时按需创建 5–16 名 Survivor；不依赖 Left4DHooks、MultiSlots、CreateSurvivorBot 或 Stats。
 
 ## 功能
 
@@ -15,6 +15,8 @@ Self-contained player utilities and Survivor session management for Left 4 Dead 
 | `!zs` | 当前 Survivor 立即自杀 |
 | `!bhop` | 切换个人自动连跳；偏好由 ClientPrefs 保存 |
 | `!csm` | 在 8 名 Survivor 角色间切换，不持久化 |
+
+Root 管理员可使用 `sm_l4dp_addbot [count]` 诊断 5+ 创建能力。该命令与 `!join` 共用同一内部创建函数、默认创建 1 个 Bot，并受 `sm_l4dp_survivor_limit` 限制；它不会出现在普通玩家菜单中。
 
 AFK Manager 默认在 120 秒无操作后自动 Idle，Auto Idle 倒计时使用独立 CenterText，不与 L4D2 原生 spectator/takeover HintText 竞争；Idle 600 秒后踢出。Free Spectator 可以无限旁观，不会因旁观时间被本插件踢出。Human Team Wipe 会在所有本轮参与真人真正死亡后杀死剩余普通 Survivor Bot，让游戏自然判定团灭。所有提示提供英文和简体中文翻译。
 
@@ -40,7 +42,7 @@ Copy-Item scripts/config.example.ps1 scripts/config.local.ps1
 ./scripts/package.ps1
 ```
 
-构建产物位于 `dist/l4d2_players.smx`，Release 包为 `dist/l4d2-plugin-players-v0.3.4.zip`。
+构建产物位于 `dist/l4d2_players.smx`，Release 包为 `dist/l4d2-plugin-players-v0.3.5.zip`。
 
 安装、服务器配置和迁移说明见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。当前实现已完成编译、静态依赖和本机 Windows gamedata 签名验证；多人运行行为必须按 `docs/` 下的清单在测试服验证。
 当前支持的插件 CVar 可参考 [l4d2_players.cfg.example](l4d2_players.cfg.example)。

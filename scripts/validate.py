@@ -6,16 +6,20 @@ from pathlib import Path
 
 
 REQUIRED_GAMEDATA_KEYS = (
-    '"CDirector"',
-    '"CDirectorMusicBanks::OnRoundStart"',
+    '"OS"',
     '"CTerrorPlayer::GoAwayFromKeyboard"',
     '"SurvivorBot::SetHumanSpectator"',
     '"CTerrorPlayer::TakeOverBot"',
-    '"CDirector::AddSurvivorBot"',
-    '"@TheDirector"',
+    '"NextBotCreatePlayerBot<SurvivorBot>"',
+    '"CTerrorPlayer::RoundRespawn"',
+    '"@_Z22NextBotCreatePlayerBotI11SurvivorBotEPT_PKc"',
+    '"@_ZN13CTerrorPlayer12RoundRespawnEv"',
 )
 
 FORBIDDEN_SOURCE_PATTERNS = (
+    "left4dhooks",
+    "multislots",
+    "l4d_createsurvivorbot",
     "#include <left4dhooks",
     "#include <l4dmultislots",
     "L4D_SetHumanSpec(",
@@ -23,17 +27,19 @@ FORBIDDEN_SOURCE_PATTERNS = (
     "L4DMultiSlots_Join(",
     "#include <createsurvivorbot",
     'CreateNative("CreateSurvivorBot"',
+    "LP_EngineAddSurvivorBot(",
+    "CDirector::AddSurvivorBot",
 )
 
 WINDOWS_SIGNATURES = {
-    "CDirectorMusicBanks::OnRoundStart": "55 8B EC 83 EC ?? 56 57 8B F9 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 0F",
     "CTerrorPlayer::GoAwayFromKeyboard": "?? ?? ?? ?? ?? ?? 53 56 57 8B F1 8B 06 8B 90 C8 08 00 00",
     "SurvivorBot::SetHumanSpectator": "?? ?? ?? ?? ?? ?? 83 BE ?? ?? ?? ?? 00 7E 07 32 C0 5E 5D C2 04 00 8B 0D",
     "CTerrorPlayer::TakeOverBot": "?? ?? ?? ?? ?? ?? ?? ?? ?? A1 ?? ?? ?? ?? 33 C5 89 45 FC 53 56 8D 85",
-    "CDirector::AddSurvivorBot": "55 8B EC 8B 89 ?? ?? ?? ?? 83 EC ?? 56 8D 45 FF",
+    "NextBotCreatePlayerBot<SurvivorBot>": "E8 ?? ?? ?? ?? 83 C4 08 85 C0 74 1C 8B 10 8B",
+    "CTerrorPlayer::RoundRespawn": "56 8B F1 E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 75",
 }
 
-EXPECTED_PLUGIN_VERSION = "0.3.4"
+EXPECTED_PLUGIN_VERSION = "0.3.5"
 
 PARAMETERIZED_PHRASES = {
     "AutoIdleWarning": "{1:d}",
@@ -214,6 +220,86 @@ def validate_state_machine_sources(root: Path) -> None:
     for forbidden in ("ForceChangeLevel", "ServerCommand(\"restart", "ServerCommand(\"changelevel"):
         if forbidden in human_wipe:
             raise ValueError(f"human team wipe must not directly restart/change maps: {forbidden}")
+
+
+def validate_unlimited_survivor_creation(root: Path) -> None:
+    engine = (root / "plugin" / "include" / "l4d2_players" / "engine.inc").read_text(encoding="utf-8")
+    survivor_engine = (root / "plugin" / "include" / "l4d2_players" / "survivor_engine.inc").read_text(encoding="utf-8")
+    join = (root / "plugin" / "include" / "l4d2_players" / "join.inc").read_text(encoding="utf-8")
+    commands = (root / "plugin" / "include" / "l4d2_players" / "commands.inc").read_text(encoding="utf-8")
+    config = (root / "plugin" / "include" / "l4d2_players" / "config.inc").read_text(encoding="utf-8")
+    gamedata = (root / "gamedata" / "l4d2_players.txt").read_text(encoding="utf-8")
+    all_plugin_source = "\n".join(
+        path.read_text(encoding="utf-8") for path in (root / "plugin").rglob("*.*")
+    )
+
+    required_engine_fragments = (
+        'GetAddress("NextBotCreatePlayerBot<SurvivorBot>")',
+        'GetOffset("OS")',
+        "LoadFromAddress(createAddress + view_as<Address>(1), NumberType_Int32)",
+        "StartPrepSDKCall(SDKCall_Static)",
+        "PrepSDKCall_SetAddress(createAddress)",
+        "PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer)",
+        "PrepSDKCall_SetReturnInfo(SDKType_CBasePlayer, SDKPass_Pointer)",
+        'PrepSDKCall_SetFromConf(g_LPGameData, SDKConf_Signature, "CTerrorPlayer::RoundRespawn")',
+        "int LP_EngineCreateSurvivorBot",
+        "void LP_EngineRoundRespawn",
+    )
+    for fragment in required_engine_fragments:
+        if fragment not in engine:
+            raise ValueError(f"unlimited Survivor engine fragment missing: {fragment}")
+
+    creation_path = survivor_engine.split("int LP_CreateUnlimitedSurvivorBot", 1)[1].split(
+        "bool LP_CanCreateSurvivorBot", 1
+    )[0]
+    required_creation_fragments = (
+        "GetClientCount(false) >= MaxClients",
+        "LP_GetSurvivorCount()",
+        "LP_GetConfiguredSurvivorCapacity()",
+        'LP_EngineCreateSurvivorBot("Players Survivor Bot")',
+        "ChangeClientTeam(bot, LP_TEAM_SURVIVOR)",
+        "if (!IsPlayerAlive(bot))",
+        "LP_EngineRoundRespawn(bot)",
+        "return bot;",
+        "LP_LogError(",
+    )
+    for fragment in required_creation_fragments:
+        if fragment not in creation_path:
+            raise ValueError(f"unlimited Survivor creation invariant missing: {fragment}")
+    ordered = (
+        "GetClientCount(false) >= MaxClients",
+        'LP_EngineCreateSurvivorBot("Players Survivor Bot")',
+        "ChangeClientTeam(bot, LP_TEAM_SURVIVOR)",
+        "LP_EngineRoundRespawn(bot)",
+        "return bot;",
+    )
+    positions = [creation_path.find(fragment) for fragment in ordered]
+    if positions != sorted(positions):
+        raise ValueError("unlimited Survivor creation steps are not in the required order")
+
+    if 'LP_CreateUnlimitedSurvivorBot("join")' not in join:
+        raise ValueError("!join does not use the shared unlimited Survivor Bot creation function")
+    if 'RegAdminCmd("sm_l4dp_addbot", LP_CommandAddBot, ADMFLAG_ROOT' not in commands:
+        raise ValueError("root-only sm_l4dp_addbot diagnostic command is missing")
+    if 'LP_CreateUnlimitedSurvivorBot("admin_diagnostic")' not in commands:
+        raise ValueError("sm_l4dp_addbot does not use the shared creation function")
+    if 'menu.AddItem("addbot"' in commands:
+        raise ValueError("admin diagnostic command must not appear in the player menu")
+    if all_plugin_source.count("LP_CreateUnlimitedSurvivorBot(") != 3:
+        raise ValueError("expected one shared unlimited creation function and exactly two callers")
+
+    if 'CreateConVar("sm_l4dp_survivor_limit", "4"' not in config or "true, 16.0" not in config:
+        raise ValueError("Players Survivor capacity must default to 4 and remain capped at 16")
+    for forbidden in (
+        'FindConVar("survivor_limit")',
+        'ServerCommand("survivor_limit',
+        'SetConVarInt("survivor_limit',
+        'CDirector::AddSurvivorBot',
+        'CDirectorMusicBanks::OnRoundStart',
+        '"CDirector"',
+    ):
+        if forbidden in all_plugin_source or forbidden in gamedata:
+            raise ValueError(f"removed Director/official survivor_limit path remains: {forbidden}")
 
 
 def validate_afk_hint_sources(root: Path) -> None:
@@ -467,11 +553,13 @@ def main() -> int:
 
     phrases = validate_translation(translation_path)
     validate_state_machine_sources(root)
+    validate_unlimited_survivor_creation(root)
     validate_afk_hint_sources(root)
     validate_free_spectator_sources(root, phrases)
     validate_spectator_kick_removed(root, phrases)
     print(f"SourceMod translation SMC validation passed ({len(phrases)} phrase sections).")
     print("Idle/takeover state-machine source invariants passed.")
+    print("Shared unlimited Survivor Bot creation invariants passed.")
     print("Auto Idle CenterText and Idle Kick HintText lifecycle invariants passed.")
     print("Explicit Free Spectator and localized chat-prefix invariants passed.")
     print("Spectator Kick removal and current configuration invariants passed.")
@@ -481,10 +569,18 @@ def main() -> int:
         binary_path = Path(sys.argv[2]).resolve()
         binary = binary_path.read_bytes()
         for name, spec in WINDOWS_SIGNATURES.items():
-            count = sum(1 for _ in compile_signature(spec).finditer(binary))
+            matches = list(compile_signature(spec).finditer(binary))
+            count = len(matches)
             if count != 1:
                 raise SystemExit(f"Windows signature {name!r} matched {count} locations; expected exactly 1")
             print(f"Windows signature {name}: unique match")
+            if name == "NextBotCreatePlayerBot<SurvivorBot>":
+                call_offset = matches[0].start()
+                relative = int.from_bytes(binary[call_offset + 1 : call_offset + 5], "little", signed=True)
+                target = call_offset + 5 + relative
+                if binary[call_offset] != 0xE8 or not 0 <= target < len(binary):
+                    raise SystemExit("NextBot Windows signature did not resolve to an in-binary E8 call target")
+                print(f"NextBot Windows E8 target resolved inside server.dll at file-relative 0x{target:X}")
         print(f"Windows gamedata signatures validated against {binary_path}")
     else:
         print("GameServerBinaryPath is not configured; skipped Windows binary signature validation.")

@@ -25,7 +25,7 @@ sm_l4dp_spectator_join_grace_seconds
 sm_l4dp_spectator_kick_seconds
 ```
 
-新安装自动生成的配置不再包含这两项。Release 根目录的 `l4d2_players.cfg.example` 也只列出 v0.3.4 仍支持的 CVar。Free Spectator 可无限旁观，不会因时间被 Players 踢出。
+新安装自动生成的配置不再包含这两项。Release 根目录的 `l4d2_players.cfg.example` 也只列出 v0.3.5 仍支持的 CVar。Free Spectator 可无限旁观，不会因时间被 Players 踢出。
 
 ## 2. 推荐 server.cfg
 
@@ -56,7 +56,16 @@ sm_l4dp_survivor_limit "4"
 
 5+ 服务器可将其设置为 `5–16`。该值只是 Players 的业务上限；实际加入还受 `MaxClients` 和可用临时客户端槽影响。Idle 会同时保留真人 spectator 和 Survivor Bot，16 人服务器应为这些客户端实体预留足够容量。
 
-Players 不检测或调用 L4DToolZ。若服务器容量层仍限制为原版人数，调高本 ConVar 不会突破底层限制。
+官方 `survivor_limit` 应继续保持 `4`。Players 不会把它设置成 `sm_l4dp_survivor_limit`，而是在没有可接管 Bot 时直接使用内置 NextBot + RoundRespawn 创建路径，因此不会让 Director 在开局自动补出 8/12/16 个 Bot。Players 不检测或调用 L4DToolZ；服务器仍需由 L4DToolZ 等容量基础设施提供足够 `MaxClients`。
+
+单真人诊断可由 root 管理员执行：
+
+```text
+sm_l4dp_survivor_limit 5
+sm_l4dp_addbot 1
+```
+
+`sm_l4dp_addbot [count]` 默认创建 1 个，调用与 `!join` 完全相同的内部创建函数，不会突破 Players 上限，也不会进入普通玩家菜单。创建失败会在 SourceMod error log 中记录 SDKCall、容量、client slot、team 或 respawn 阶段。
 
 ## 4. 迁移旧插件
 
@@ -69,6 +78,6 @@ Players 自身不依赖 Left4DHooks，但服务器上的其他 bugfix 可能依�
 游戏更新后若插件报告签名失败：
 
 1. 不要强制加载插件；
-2. 对当前 Windows/Linux `server` 二进制重新验证四个函数和 `CDirector` 地址；
+2. 对当前 Windows/Linux `server` 二进制重新验证五个函数，并确认 Windows NextBot `E8` 调用点仍解析到有效函数入口；
 3. 只更新 `gamedata/l4d2_players.txt`；
 4. 重新执行 build、validate 和多人联调清单。

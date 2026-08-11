@@ -16,7 +16,7 @@
 
 ## Join
 
-优先级不可更改：自己的 Idle Bot、无人绑定且存活的 Survivor Bot、新创建的 Survivor Bot。自己的 Idle Bot 保留现有 human/Bot 关系，只调用内部 takeover；Free Spectator 接管普通 Bot 才执行 unassigned、bind、takeover。两条路径均以有界验证后的 Active Survivor 状态为成功依据。Bot 创建请求全局串行；超时或请求者离线不会无限重试。只有创建新 Bot 会增加 Survivor 数并受 `sm_l4dp_survivor_limit` 约束。
+优先级不可更改：自己的 Idle Bot、无人绑定且存活的 Survivor Bot、新创建的 Survivor Bot。自己的 Idle Bot 保留现有 human/Bot 关系，只调用内部 takeover；Free Spectator 接管普通 Bot 才执行 unassigned、bind、takeover。两条路径均以有界验证后的 Active Survivor 状态为成功依据。Join 请求全局串行；需要扩容时通过 NextBot 创建、team 2 切换及必要的 RoundRespawn 同步取得真实 Bot index，再进入现有 bind + takeover 状态机。只有创建新 Bot 会增加 Survivor 数并受 `sm_l4dp_survivor_limit` 约束，官方 `survivor_limit` 不得由 Players 修改。
 
 ## Free Spectator
 
