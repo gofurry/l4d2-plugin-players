@@ -23,6 +23,7 @@
 - Added hull/ground/out-of-world checked placement around a randomly selected healthy human teammate, with living Bot fallback and safe failure that preserves the engine origin.
 - Added the restricted mid-join loadout: random T1 pump/chrome/SMG/silenced SMG, map-observed melee with maintained legal fallback and pistol safety fallback, plus pills/adrenaline.
 - Added `sm_l4dp_auto_join`, `sm_l4dp_midjoin_spawn_near_player`, and `sm_l4dp_midjoin_loadout`, all enabled by default.
+- Includes Human Team Wipe, Auto Idle/Idle Kick, `!zs`, ClientPrefs-backed `!bhop`, and eight-character `!csm` in the stable v1.0.0 feature set.
 - Declared replacement of overlapping MultiSlots, CreateSurvivorBot, and legacy AFK dead-bot fix behavior without adding a third-party runtime dependency.
 
 ## 0.3.5 - 2026-08-11

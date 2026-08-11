@@ -7,6 +7,6 @@
 
 ## 后续维护
 
-- 完成 Windows/Linux 测试服的 5/8/12/16 人和 changelevel 长期验证。
+- 补充 5+ 真人并发测试、多真人 Night Vision owner-only 可见性验证和长期 changelevel soak test。
 - 随 L4D2 游戏更新维护 gamedata，并重新执行唯一签名与实机行为验证。
 - 只修复行为契约内的兼容问题；公共 API 如有需要另行设计和版本化。

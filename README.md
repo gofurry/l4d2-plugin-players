@@ -61,7 +61,7 @@ Copy-Item scripts/config.example.ps1 scripts/config.local.ps1
 
 构建产物位于 `dist/l4d2_players.smx`，Release 包为 `dist/l4d2-plugin-players-v1.0.0.zip`。
 
-安装、服务器配置和迁移说明见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。当前实现已完成编译、静态依赖和本机 Windows gamedata 签名验证；多人运行行为必须按 `docs/` 下的清单在测试服验证。
+安装、服务器配置和迁移说明见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。Build、静态依赖和本机 Windows gamedata 签名验证已通过；Linux dedicated server 已完成核心功能与生命周期实机验证，5/8/12/16 总 Survivor 数量已以 1 真人 + Bots 验证。5+ 真人并发场景仍未覆盖。
 当前支持的插件 CVar 可参考 [l4d2_players.cfg.example](l4d2_players.cfg.example)。
 
 ## 许可证
