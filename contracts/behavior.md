@@ -22,6 +22,10 @@
 
 活动会重置 Auto Idle 时间，但不会延长 Free Spectator 占槽时间。任何合法原生 Idle 来源都进入统一 Idle Kick 计时。管理员只豁免 Kick，不豁免 Auto Idle。
 
+## Human Team Wipe
+
+本轮成为过 Active Survivor 或 Engine Idle 的真人会被登记为参与者。活着的 Active 真人，以及绑定 Bot 仍活着的 Engine Idle 真人，均视为有效存活；普通无人绑定 Bot 不算。只有全部登记参与者均收到真正死亡事件且不存在有效存活真人时，插件才延迟杀死剩余 Survivor Bot。Free Spectator、从未加入者、倒地和挂边玩家不会单独触发判断。
+
 ## QoL
 
 Bhop 只重放跳跃边沿，不修改速度或物理 CVar。角色切换同时修改 `m_survivorCharacter` 和模型，允许重复且不持久化。

@@ -206,6 +206,7 @@ public Action LP_TimerAfkMonitor(Handle timer)
 		{
 			continue;
 		}
+		LP_HumanTeamWipeObserveClient(client);
 		switch (LP_GetPlayerState(client))
 		{
 			case LP_PLAYER_STATE_SURVIVOR_ACTIVE: LP_UpdateActiveClient(client, now);

@@ -124,6 +124,7 @@ public void LP_FrameVerifyIdle(any serial)
 		g_LPPlayers[stateClient].idleSince = GetGameTime();
 		g_LPPlayers[stateClient].wasIdle = true;
 		LP_ResetIdleVerification(stateClient);
+		LP_HumanTeamWipeObserveClient(stateClient);
 		LP_Print(stateClient, "NowIdle");
 		LP_Log("Idle verified: reason=%s client=%N bot=%d.",
 			reason == LP_IDLE_REASON_AUTOMATIC ? "automatic" : "manual",
@@ -160,6 +161,7 @@ public Action LP_EventPlayerDeathPre(Event event, const char[] name, bool dontBr
 	{
 		return Plugin_Continue;
 	}
+	LP_HumanTeamWipeRecordIdleBotDeath(human);
 
 	if (!LP_ReturnFromIdleBot(human, bot))
 	{

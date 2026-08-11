@@ -33,7 +33,7 @@ WINDOWS_SIGNATURES = {
     "CDirector::AddSurvivorBot": "55 8B EC 8B 89 ?? ?? ?? ?? 83 EC ?? 56 8D 45 FF",
 }
 
-EXPECTED_PLUGIN_VERSION = "0.3.1"
+EXPECTED_PLUGIN_VERSION = "0.3.2"
 
 PARAMETERIZED_PHRASES = {
     "AutoIdleWarning": "{1:d}",
@@ -165,6 +165,10 @@ def validate_state_machine_sources(root: Path) -> None:
     ).read_text(encoding="utf-8")
     idle = (root / "plugin" / "include" / "l4d2_players" / "idle.inc").read_text(encoding="utf-8")
     join = (root / "plugin" / "include" / "l4d2_players" / "join.inc").read_text(encoding="utf-8")
+    config = (root / "plugin" / "include" / "l4d2_players" / "config.inc").read_text(encoding="utf-8")
+    human_wipe = (
+        root / "plugin" / "include" / "l4d2_players" / "human_team_wipe.inc"
+    ).read_text(encoding="utf-8")
 
     if f'#define LP_VERSION "{EXPECTED_PLUGIN_VERSION}"' not in definitions:
         raise ValueError(f"LP_VERSION must be {EXPECTED_PLUGIN_VERSION}")
@@ -194,6 +198,23 @@ def validate_state_machine_sources(root: Path) -> None:
         raise ValueError("join flow does not use the dedicated return-from-idle path")
     if "LP_BindAndTakeOverBot(client, bot)" not in join:
         raise ValueError("join flow does not retain the Free Spectator bind path")
+
+    if 'CreateConVar("sm_l4dp_human_team_wipe", "1"' not in config:
+        raise ValueError("human team wipe ConVar is missing or not enabled by default")
+    required_wipe_fragments = (
+        "LP_IsEffectiveHumanSurvivorAlive",
+        "LP_IsEngineIdle(client)",
+        "LP_FindIdleHumanForBot(bot) == 0",
+        "CreateTimer(LP_HUMAN_WIPE_CHECK_DELAY",
+        "ForcePlayerSuicide(bot)",
+        'LP_Log("Human team wipe: no participating human survivor remains alive.")',
+    )
+    for fragment in required_wipe_fragments:
+        if fragment not in human_wipe:
+            raise ValueError(f"human team wipe invariant missing: {fragment}")
+    for forbidden in ("ForceChangeLevel", "ServerCommand(\"restart", "ServerCommand(\"changelevel"):
+        if forbidden in human_wipe:
+            raise ValueError(f"human team wipe must not directly restart/change maps: {forbidden}")
 
 
 def compile_signature(spec: str) -> re.Pattern[bytes]:

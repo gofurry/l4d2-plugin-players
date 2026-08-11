@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 - 2026-08-11
+
+- Added configurable Human Team Wipe behavior while retaining `sb_all_bot_game 1` for all-human Idle play.
+- Tracks humans who participated as Survivors during the round and distinguishes Active/Idle effective survival from ordinary Bots.
+- Performs a delayed post-death check and kills remaining Survivor Bots only after every participating human has truly died.
+- Added `sm_l4dp_human_team_wipe`, enabled by default.
+
 ## 0.3.1 - 2026-08-11
 
 - Fixed Linux engine Idle verification by waiting for bounded multi-frame state convergence.

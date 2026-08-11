@@ -18,6 +18,6 @@ L4D2 server binary
 - `join.inc`：串行化 Bot 创建，避免并发请求接管同一个 Bot。
 - `runtime.inc`：保存每个客户端的活动、Idle、旁观和个人设置状态。
 - `afk_monitor.inc`：唯一的长期 1 秒 Timer；没有 per-client 长期 Timer。
+- `human_team_wipe.inc`：记录本轮真人 Survivor 参与/死亡状态，在安全延迟后让剩余 Bot 自杀并交由游戏自然判定团灭。
 
 插件不暴露 v0.x Native/Forward，也不包含对其他功能型 SourceMod 插件的可选调用。
-

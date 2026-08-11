@@ -16,6 +16,7 @@
 #include <l4d2_players/survivor_engine>
 #include <l4d2_players/idle>
 #include <l4d2_players/join>
+#include <l4d2_players/human_team_wipe>
 #include <l4d2_players/suicide>
 #include <l4d2_players/bhop>
 #include <l4d2_players/character>
@@ -51,6 +52,7 @@ public void OnPluginStart()
 	LP_ResetRuntime();
 	LP_InitializeIdle();
 	LP_InitializeJoin();
+	LP_InitializeHumanTeamWipe();
 	LP_InitializeBhop();
 	LP_InitializeAfkMonitor();
 	LP_RegisterCommands();
@@ -84,6 +86,7 @@ public void OnConfigsExecuted()
 public void OnMapStart()
 {
 	g_LPMapEnding = false;
+	LP_HumanTeamWipeMapStart();
 	LP_PrecacheCharacterModels();
 	LP_ResetMapRuntime();
 	LP_StartAfkMonitor();
@@ -95,11 +98,13 @@ public void OnMapEnd()
 	LP_StopAfkMonitor();
 	LP_CancelAllIdleVerifications();
 	LP_CancelJoinQueue();
+	LP_HumanTeamWipeMapEnd();
 }
 
 public void OnPluginEnd()
 {
 	LP_StopAfkMonitor();
+	LP_CancelHumanTeamWipeCheck();
 	LP_ShutdownEngine();
 }
 
@@ -117,6 +122,7 @@ public void OnClientDisconnect(int client)
 {
 	LP_IdleClientDisconnected(client);
 	LP_JoinClientDisconnected(client);
+	LP_HumanTeamWipeClientDisconnected(client);
 	LP_RuntimeClientDisconnected(client);
 }
 

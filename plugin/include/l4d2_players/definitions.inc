@@ -3,7 +3,7 @@
 #endif
 #define _l4d2_players_definitions_included
 
-#define LP_VERSION "0.3.1"
+#define LP_VERSION "0.3.2"
 #define LP_PREFIX "\x04[Players]\x01"
 #define LP_TEAM_UNASSIGNED 0
 #define LP_TEAM_SPECTATOR 1

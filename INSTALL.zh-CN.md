@@ -29,6 +29,14 @@ sm_cvar sv_hibernate_when_empty 1
 
 插件只检查前三项并输出 warning，不会修改服务器全局 CVar。
 
+`sb_all_bot_game 1`必须保留，以便所有真人处于 Engine Idle 时由绑定 Bot 继续游戏。默认启用的：
+
+```cfg
+sm_l4dp_human_team_wipe "1"
+```
+
+会在本轮所有参与 Survivor 的真人真正死亡后杀死剩余普通 Survivor Bot，让游戏自然进入 team wipe；它不会直接重启或换图。
+
 ## 3. Survivor 容量
 
 默认：
@@ -55,4 +63,3 @@ Players 自身不依赖 Left4DHooks，但服务器上的其他 bugfix 可能依�
 2. 对当前 Windows/Linux `server` 二进制重新验证四个函数和 `CDirector` 地址；
 3. 只更新 `gamedata/l4d2_players.txt`；
 4. 重新执行 build、validate 和多人联调清单。
-

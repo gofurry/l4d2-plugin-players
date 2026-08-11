@@ -182,6 +182,7 @@ void LP_FinishTakeover(int client, bool success)
 	if (success)
 	{
 		LP_RecordActivity(client);
+		LP_HumanTeamWipeObserveClient(client);
 		LP_Print(client, "JoinedGame");
 		LP_Log("Takeover verified: path=%s client=%N bot=%d.",
 			path == LP_TAKEOVER_PATH_RETURN_IDLE ? "return_idle" : "bind_free_bot", client, bot);

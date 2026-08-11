@@ -18,6 +18,7 @@ ConVar g_LPCvarBhopEnabled;
 ConVar g_LPCvarBhopDefault;
 ConVar g_LPCvarCsmEnabled;
 ConVar g_LPCvarAnnounceIdleKick;
+ConVar g_LPCvarHumanTeamWipe;
 
 bool g_LPEnabled;
 int g_LPSurvivorLimit;
@@ -34,6 +35,7 @@ bool g_LPBhopEnabled;
 bool g_LPBhopDefault;
 bool g_LPCsmEnabled;
 bool g_LPAnnounceIdleKick;
+bool g_LPHumanTeamWipeEnabled;
 
 void LP_CreateConfig()
 {
@@ -52,6 +54,7 @@ void LP_CreateConfig()
 	g_LPCvarBhopDefault = CreateConVar("sm_l4dp_bhop_default", "0", "Default bunny hop preference for new clients.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarCsmEnabled = CreateConVar("sm_l4dp_csm_enabled", "1", "Allow survivor character selection.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarAnnounceIdleKick = CreateConVar("sm_l4dp_announce_idle_kick", "1", "Announce idle kicks to other players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_LPCvarHumanTeamWipe = CreateConVar("sm_l4dp_human_team_wipe", "1", "Kill remaining Survivor Bots after all participating humans have died.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
 	g_LPCvarEnabled.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarSurvivorLimit.AddChangeHook(LP_ConVarChanged);
@@ -68,6 +71,7 @@ void LP_CreateConfig()
 	g_LPCvarBhopDefault.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarCsmEnabled.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarAnnounceIdleKick.AddChangeHook(LP_ConVarChanged);
+	g_LPCvarHumanTeamWipe.AddChangeHook(LP_ConVarChanged);
 }
 
 public void LP_ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
@@ -119,6 +123,7 @@ void LP_ApplyConfiguration()
 	g_LPBhopDefault = g_LPCvarBhopDefault.BoolValue;
 	g_LPCsmEnabled = g_LPCvarCsmEnabled.BoolValue;
 	g_LPAnnounceIdleKick = g_LPCvarAnnounceIdleKick.BoolValue;
+	g_LPHumanTeamWipeEnabled = g_LPCvarHumanTeamWipe.BoolValue;
 
 	char flags[32];
 	g_LPCvarAdminFlags.GetString(flags, sizeof(flags));
