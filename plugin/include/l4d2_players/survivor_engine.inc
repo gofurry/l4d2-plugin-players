@@ -260,6 +260,27 @@ int LP_FindAvailableSurvivorBot()
 	return 0;
 }
 
+bool LP_InitializeCreatedSurvivorIdentity(int bot, int character)
+{
+	if (!LP_IsSurvivorBot(bot))
+	{
+		LP_LogError("Created Survivor identity initialization failed: bot=%d character=%d stage=not_survivor_bot.",
+			bot, character);
+		return false;
+	}
+	if (!LP_ApplySurvivorIdentity(bot, character))
+	{
+		char actualModel[PLATFORM_MAX_PATH];
+		GetClientModel(bot, actualModel, sizeof(actualModel));
+		int actualCharacter = HasEntProp(bot, Prop_Send, "m_survivorCharacter")
+			? GetEntProp(bot, Prop_Send, "m_survivorCharacter") : -1;
+		LP_LogError("Created Survivor identity initialization failed: bot=%d character=%d stage=apply_or_verify actual_character=%d actual_model=%s.",
+			bot, character, actualCharacter, actualModel);
+		return false;
+	}
+	return true;
+}
+
 int LP_CreateUnlimitedSurvivorBot(const char[] context)
 {
 	if (!g_LPEnabled || g_LPMapEnding)
@@ -309,9 +330,17 @@ int LP_CreateUnlimitedSurvivorBot(const char[] context)
 			context, bot, GetClientTeam(bot));
 		return 0;
 	}
+
+	int character = LP_GetNextCreatedSurvivorCharacter();
+	if (!LP_InitializeCreatedSurvivorIdentity(bot, character))
+	{
+		return 0;
+	}
+	bool respawned = false;
 	if (!IsPlayerAlive(bot))
 	{
 		LP_EngineRoundRespawn(bot);
+		respawned = true;
 	}
 	if (!IsPlayerAlive(bot))
 	{
@@ -319,6 +348,22 @@ int LP_CreateUnlimitedSurvivorBot(const char[] context)
 			context, bot);
 		return 0;
 	}
+	if (respawned && !LP_InitializeCreatedSurvivorIdentity(bot, character))
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s bot=%d identity was reset by RoundRespawn.",
+			context, bot);
+		return 0;
+	}
+	if (!LP_VerifySurvivorIdentity(bot, character))
+	{
+		LP_LogError("Unlimited Survivor Bot creation failed: context=%s bot=%d stage=final_identity_verification character=%d.",
+			context, bot, character);
+		return 0;
+	}
+
+	char model[PLATFORM_MAX_PATH];
+	LP_GetSurvivorCharacterModel(character, model, sizeof(model));
+	LP_Log("Created Survivor identity initialized: bot=%d character=%d model=%s.", bot, character, model);
 
 	LP_Log("Unlimited Survivor Bot created: context=%s bot=%d survivors=%d/%d clients=%d/%d.",
 		context, bot, LP_GetSurvivorCount(), survivorCapacity, GetClientCount(false), MaxClients);

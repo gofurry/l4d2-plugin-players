@@ -26,6 +26,8 @@ Auto Join 只针对真正进入游戏的真人，每次连接只发起一次现�
 
 只有 Join 队列本次调用 Players 无上限创建函数所得 Bot 才可设置 `newly_created_bot` pending context。只有 takeover 最终验证为 Active Survivor 后才安排放置/装备；即时 SDKCall 返回值不具权威性。`return_idle`、existing Bot、CSM、复活和过图路径不得设置该 context。
 
+新 Bot 进入 team 2 后、takeover 前必须从 0–3 round-robin 选择 L4D2 Survivor identity，并复用 `character.inc` 的唯一 model 映射设置和验证。若调用 RoundRespawn，必须对同一 character 再应用并最终验证。诊断 `sm_l4dp_addbot` 走同一创建函数；Idle/existing Bot 路径不得调用创建身份初始化。
+
 放置优先随机选择存活、未倒地、未挂边的真人 Survivor，没有时选择存活 Bot；候选点必须通过向下地面、坡度、world bounds 和 player hull 检查。无安全点时保留引擎位置且 takeover 仍成功。装备清理后只给予随机 T1 pump/chrome/SMG/silenced SMG、地图已实例化 melee script（合法集合 fallback，最终 pistol）以及 pills/adrenaline；不得给 medkit、throwable、ammo upgrade 或 T2 武器。任何后处理失败均不得反转 takeover 成功状态。
 
 ## Free Spectator

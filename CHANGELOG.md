@@ -2,6 +2,8 @@
 
 ## 1.0.0 - 2026-08-11
 
+- Initializes every Players-created Bot with a round-robin Nick/Rochelle/Coach/Ellis identity before takeover, reapplies it after `RoundRespawn`, and verifies both `m_survivorCharacter` and the shared Survivor model mapping.
+- Reuses the same identity/model helper as `!csm`, preventing newly-created Bots from retaining infected models or first-person arms without introducing a second model table.
 - Added default-on, once-per-connection Auto Join with a 2.5-second initial delay and at most three bounded attempts; it calls the existing `LP_JoinSurvivor`/Join queue exclusively.
 - Preserves an explicit `!spec` choice across changelevel for the rest of the connection while keeping manual `!join` available.
 - Records whether a `bind_free_bot` takeover uses an existing Bot or a Bot newly created by Players.

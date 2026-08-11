@@ -22,6 +22,8 @@ Root 管理员可使用 `sm_l4dp_addbot [count]` 诊断 5+ 创建能力。该命
 
 只有 Players 为本次 Join 新创建的 5+ Survivor，在 takeover 最终验证成功后才会执行中途出生策略：安全放置在随机存活队友附近，并获得随机 T1 单喷/微冲、地图可用近战（失败时 pistol）及 pills/adrenaline。接回 Idle Bot、接管现有 Bot、换角色、普通复活和过图均不会重置位置或装备。
 
+每个新建 Bot 在 takeover 前会按 Nick → Rochelle → Coach → Ellis 轮转设置 `m_survivorCharacter` 和 Survivor 模型；若需要 `RoundRespawn`，身份会在 respawn 后再次应用并验证。5+ 允许重复角色，`!join` 与 `sm_l4dp_addbot` 共用该初始化路径。
+
 对应功能开关为 `sm_l4dp_auto_join`、`sm_l4dp_midjoin_spawn_near_player` 和 `sm_l4dp_midjoin_loadout`，v1.0.0 均默认开启。
 
 AFK Manager 默认在 120 秒无操作后自动 Idle，Auto Idle 倒计时使用独立 CenterText，不与 L4D2 原生 spectator/takeover HintText 竞争；Idle 600 秒后踢出。Free Spectator 可以无限旁观，不会因旁观时间被本插件踢出。Human Team Wipe 会在所有本轮参与真人真正死亡后杀死剩余普通 Survivor Bot，让游戏自然判定团灭。所有提示提供英文和简体中文翻译。

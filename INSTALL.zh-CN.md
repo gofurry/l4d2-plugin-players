@@ -58,6 +58,8 @@ sm_l4dp_survivor_limit "4"
 
 官方 `survivor_limit` 应继续保持 `4`。Players 不会把它设置成 `sm_l4dp_survivor_limit`，而是在没有可接管 Bot 时直接使用内置 NextBot + RoundRespawn 创建路径，因此不会让 Director 在开局自动补出 8/12/16 个 Bot。Players 不检测或调用 L4DToolZ；服务器仍需由 L4DToolZ 等容量基础设施提供足够 `MaxClients`。
 
+Players 创建的每个 Bot 会在 takeover 前按 Nick、Rochelle、Coach、Ellis round-robin 初始化 character/model，并在 RoundRespawn 后重新应用和验证。该步骤只存在于新 Bot 创建函数中，不会修改 Idle 返回或 existing Bot 的角色。
+
 单真人诊断可由 root 管理员执行：
 
 ```text

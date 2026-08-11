@@ -12,6 +12,7 @@
 #include <l4d2_players/logging>
 #include <l4d2_players/engine>
 #include <l4d2_players/state>
+#include <l4d2_players/character>
 #include <l4d2_players/hud>
 #include <l4d2_players/midjoin>
 #include <l4d2_players/survivor_engine>
@@ -22,7 +23,6 @@
 #include <l4d2_players/auto_join>
 #include <l4d2_players/suicide>
 #include <l4d2_players/bhop>
-#include <l4d2_players/character>
 #include <l4d2_players/afk_monitor>
 #include <l4d2_players/commands>
 

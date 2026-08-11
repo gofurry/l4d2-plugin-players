@@ -3,6 +3,10 @@
 #endif
 #define _l4d2_players_character_included
 
+#define LP_L4D2_SURVIVOR_CHARACTER_COUNT 4
+
+int g_LPNextCreatedSurvivorCharacter;
+
 static const char g_LPCharacterNames[][] =
 {
 	"Nick", "Rochelle", "Coach", "Ellis", "Bill", "Zoey", "Francis", "Louis"
@@ -19,6 +23,60 @@ static const char g_LPCharacterModels[][] =
 	"models/survivors/survivor_biker.mdl",
 	"models/survivors/survivor_manager.mdl"
 };
+
+bool LP_IsValidSurvivorCharacter(int character)
+{
+	return character >= 0 && character < sizeof(g_LPCharacterModels);
+}
+
+void LP_GetSurvivorCharacterModel(int character, char[] model, int modelLength)
+{
+	if (!LP_IsValidSurvivorCharacter(character))
+	{
+		model[0] = '\0';
+		return;
+	}
+	strcopy(model, modelLength, g_LPCharacterModels[character]);
+}
+
+bool LP_VerifySurvivorIdentity(int client, int character)
+{
+	if (client < 1 || client > MaxClients || !IsClientInGame(client)
+		|| !LP_IsValidSurvivorCharacter(character)
+		|| !HasEntProp(client, Prop_Send, "m_survivorCharacter")
+		|| GetEntProp(client, Prop_Send, "m_survivorCharacter") != character)
+	{
+		return false;
+	}
+
+	char expectedModel[PLATFORM_MAX_PATH];
+	char actualModel[PLATFORM_MAX_PATH];
+	LP_GetSurvivorCharacterModel(character, expectedModel, sizeof(expectedModel));
+	GetClientModel(client, actualModel, sizeof(actualModel));
+	return StrEqual(actualModel, expectedModel, false);
+}
+
+bool LP_ApplySurvivorIdentity(int client, int character)
+{
+	if (client < 1 || client > MaxClients || !IsClientInGame(client)
+		|| !LP_IsValidSurvivorCharacter(character)
+		|| !HasEntProp(client, Prop_Send, "m_survivorCharacter"))
+	{
+		return false;
+	}
+
+	SetEntProp(client, Prop_Send, "m_survivorCharacter", character);
+	SetEntityModel(client, g_LPCharacterModels[character]);
+	return LP_VerifySurvivorIdentity(client, character);
+}
+
+int LP_GetNextCreatedSurvivorCharacter()
+{
+	int character = g_LPNextCreatedSurvivorCharacter;
+	g_LPNextCreatedSurvivorCharacter = (g_LPNextCreatedSurvivorCharacter + 1)
+		% LP_L4D2_SURVIVOR_CHARACTER_COUNT;
+	return character;
+}
 
 void LP_PrecacheCharacterModels()
 {
@@ -99,8 +157,12 @@ public int LP_CharacterMenuHandler(Menu menu, MenuAction action, int client, int
 		return 0;
 	}
 
-	SetEntProp(client, Prop_Send, "m_survivorCharacter", character);
-	SetEntityModel(client, g_LPCharacterModels[character]);
+	if (!LP_ApplySurvivorIdentity(client, character))
+	{
+		LP_LogError("Character change failed identity verification: client=%N character=%d.", client, character);
+		LP_Print(client, "CharacterUnavailable");
+		return 0;
+	}
 	LP_RecordActivity(client);
 	LP_Print(client, "CharacterChanged");
 	return 0;

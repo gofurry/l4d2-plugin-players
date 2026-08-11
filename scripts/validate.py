@@ -228,6 +228,7 @@ def validate_unlimited_survivor_creation(root: Path) -> None:
     join = (root / "plugin" / "include" / "l4d2_players" / "join.inc").read_text(encoding="utf-8")
     commands = (root / "plugin" / "include" / "l4d2_players" / "commands.inc").read_text(encoding="utf-8")
     config = (root / "plugin" / "include" / "l4d2_players" / "config.inc").read_text(encoding="utf-8")
+    character = (root / "plugin" / "include" / "l4d2_players" / "character.inc").read_text(encoding="utf-8")
     gamedata = (root / "gamedata" / "l4d2_players.txt").read_text(encoding="utf-8")
     all_plugin_source = "\n".join(
         path.read_text(encoding="utf-8") for path in (root / "plugin").rglob("*.*")
@@ -258,6 +259,8 @@ def validate_unlimited_survivor_creation(root: Path) -> None:
         "LP_GetConfiguredSurvivorCapacity()",
         'LP_EngineCreateSurvivorBot("Players Survivor Bot")',
         "ChangeClientTeam(bot, LP_TEAM_SURVIVOR)",
+        "LP_GetNextCreatedSurvivorCharacter()",
+        "LP_InitializeCreatedSurvivorIdentity(bot, character)",
         "if (!IsPlayerAlive(bot))",
         "LP_EngineRoundRespawn(bot)",
         "return bot;",
@@ -270,12 +273,55 @@ def validate_unlimited_survivor_creation(root: Path) -> None:
         "GetClientCount(false) >= MaxClients",
         'LP_EngineCreateSurvivorBot("Players Survivor Bot")',
         "ChangeClientTeam(bot, LP_TEAM_SURVIVOR)",
+        "LP_GetNextCreatedSurvivorCharacter()",
+        "LP_InitializeCreatedSurvivorIdentity(bot, character)",
         "LP_EngineRoundRespawn(bot)",
         "return bot;",
     )
     positions = [creation_path.find(fragment) for fragment in ordered]
     if positions != sorted(positions):
         raise ValueError("unlimited Survivor creation steps are not in the required order")
+    first_identity = creation_path.find("LP_InitializeCreatedSurvivorIdentity(bot, character)")
+    respawn = creation_path.find("LP_EngineRoundRespawn(bot)")
+    final_identity = creation_path.rfind("LP_InitializeCreatedSurvivorIdentity(bot, character)")
+    if not first_identity < respawn < final_identity:
+        raise ValueError("created Survivor identity must be applied before and after RoundRespawn")
+    for fragment in (
+        "bool LP_InitializeCreatedSurvivorIdentity(int bot, int character)",
+        "LP_ApplySurvivorIdentity(bot, character)",
+        "LP_VerifySurvivorIdentity(bot, character)",
+        'LP_Log("Created Survivor identity initialized: bot=%d character=%d model=%s."',
+    ):
+        if fragment not in survivor_engine:
+            raise ValueError(f"created Survivor identity invariant missing: {fragment}")
+
+    required_character_fragments = (
+        "#define LP_L4D2_SURVIVOR_CHARACTER_COUNT 4",
+        "int LP_GetNextCreatedSurvivorCharacter()",
+        "bool LP_ApplySurvivorIdentity(int client, int character)",
+        "bool LP_VerifySurvivorIdentity(int client, int character)",
+        'SetEntProp(client, Prop_Send, "m_survivorCharacter", character)',
+        "SetEntityModel(client, g_LPCharacterModels[character])",
+    )
+    for fragment in required_character_fragments:
+        if fragment not in character:
+            raise ValueError(f"shared Survivor character/model mapping invariant missing: {fragment}")
+    l4d2_models = (
+        "models/survivors/survivor_gambler.mdl",
+        "models/survivors/survivor_producer.mdl",
+        "models/survivors/survivor_coach.mdl",
+        "models/survivors/survivor_mechanic.mdl",
+    )
+    for model in l4d2_models:
+        if all_plugin_source.count(model) != 1:
+            raise ValueError(f"Survivor model must have one shared definition in character.inc: {model}")
+    if all_plugin_source.count("LP_InitializeCreatedSurvivorIdentity(") != 3:
+        raise ValueError("created Survivor identity may only be defined once and applied twice in the creation path")
+    if "LP_ApplySurvivorIdentity(client, character)" not in character:
+        raise ValueError("!csm does not reuse the shared Survivor identity helper")
+    for unrelated_source in (join,):
+        if "LP_InitializeCreatedSurvivorIdentity" in unrelated_source:
+            raise ValueError("existing/Idle takeover paths must not reinitialize Survivor identity")
 
     if 'LP_CreateUnlimitedSurvivorBot("join")' not in join:
         raise ValueError("!join does not use the shared unlimited Survivor Bot creation function")
