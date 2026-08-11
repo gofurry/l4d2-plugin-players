@@ -20,6 +20,7 @@ float g_LPTakeoverStartedAt[MAXPLAYERS + 1];
 bool g_LPTakeoverImmediate[MAXPLAYERS + 1];
 bool g_LPBindImmediate[MAXPLAYERS + 1];
 bool g_LPTakeoverNewlyCreatedBot[MAXPLAYERS + 1];
+bool g_LPTakeoverIdleRollback[MAXPLAYERS + 1];
 LPTakeoverPath g_LPTakeoverPath[MAXPLAYERS + 1];
 
 int LP_GetBotHumanSpectatorUserId(int bot, int fallback = -1)
@@ -65,6 +66,7 @@ void LP_ResetTakeoverState(int client)
 	g_LPTakeoverImmediate[client] = false;
 	g_LPBindImmediate[client] = false;
 	g_LPTakeoverNewlyCreatedBot[client] = false;
+	g_LPTakeoverIdleRollback[client] = false;
 	g_LPTakeoverPath[client] = LP_TAKEOVER_PATH_NONE;
 }
 
@@ -120,7 +122,8 @@ void LP_CancelAllTakeovers()
 	}
 }
 
-bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path, bool newlyCreatedBot = false)
+bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path,
+	bool newlyCreatedBot = false, bool idleRollback = false)
 {
 	if (!LP_IsHumanClient(client) || !LP_IsSurvivorBot(bot) || LP_IsTakeoverPendingForClient(client))
 	{
@@ -142,6 +145,7 @@ bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path, bool newlyCreate
 	g_LPTakeoverStartedAt[client] = GetGameTime();
 	g_LPTakeoverPath[client] = path;
 	g_LPTakeoverNewlyCreatedBot[client] = path == LP_TAKEOVER_PATH_BIND_FREE_BOT && newlyCreatedBot;
+	g_LPTakeoverIdleRollback[client] = idleRollback;
 	g_LPBindImmediate[client] = true;
 	g_LPBotReservation[bot] = g_LPTakeoverSerial[client];
 
@@ -158,14 +162,14 @@ bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path, bool newlyCreate
 	return true;
 }
 
-bool LP_ReturnFromIdleBot(int client, int bot)
+bool LP_ReturnFromIdleBot(int client, int bot, bool idleRollback = false)
 {
-	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_RETURN_IDLE);
+	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_RETURN_IDLE, false, idleRollback);
 }
 
-bool LP_BindAndTakeOverBot(int client, int bot, bool newlyCreatedBot = false)
+bool LP_BindAndTakeOverBot(int client, int bot, bool newlyCreatedBot = false, bool idleRollback = false)
 {
-	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_BIND_FREE_BOT, newlyCreatedBot);
+	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_BIND_FREE_BOT, newlyCreatedBot, idleRollback);
 }
 
 void LP_FinishTakeover(int client, bool success)
@@ -175,6 +179,7 @@ void LP_FinishTakeover(int client, bool success)
 	bool sdkImmediate = g_LPTakeoverImmediate[client];
 	bool bindImmediate = g_LPBindImmediate[client];
 	bool newlyCreatedBot = g_LPTakeoverNewlyCreatedBot[client];
+	bool idleRollback = g_LPTakeoverIdleRollback[client];
 	LPTakeoverPath path = g_LPTakeoverPath[client];
 
 	if (bot >= 1 && bot <= MaxClients)
@@ -189,24 +194,38 @@ void LP_FinishTakeover(int client, bool success)
 		LP_StopAutoIdleHud(client);
 		LP_ClearIdleKickHint(client);
 		LP_HumanTeamWipeObserveClient(client);
-		LP_Print(client, "JoinedGame");
-		LP_Log("Takeover verified: path=%s bot_source=%s client=%N bot=%d.",
+		if (!idleRollback)
+		{
+			LP_Print(client, "JoinedGame");
+		}
+		LP_Log("Takeover verified: path=%s bot_source=%s session_context=%s client=%N bot=%d.",
 			path == LP_TAKEOVER_PATH_RETURN_IDLE ? "return_idle" : "bind_free_bot",
 			path == LP_TAKEOVER_PATH_RETURN_IDLE ? "owned_idle_bot" : (newlyCreatedBot ? "newly_created_bot" : "existing_bot"),
-			client, bot);
+			idleRollback ? "idle_rollback" : "join", client, bot);
 		if (newlyCreatedBot)
 		{
 			LP_ScheduleMidJoinSetup(client);
+		}
+		if (idleRollback)
+		{
+			LP_IdleRollbackFinished(client, true, bot);
 		}
 	}
 	else
 	{
 		LP_LogStateFailure(path == LP_TAKEOVER_PATH_RETURN_IDLE ? "return_from_idle_verify_timeout" : "bind_takeover_verify_timeout",
 			client, bot, initialHumanSpec, sdkImmediate ? 1 : 0, bindImmediate ? 1 : 0);
-		LP_Print(client, "TakeoverFailed");
+		if (!idleRollback)
+		{
+			LP_Print(client, "TakeoverFailed");
+		}
 		if (path == LP_TAKEOVER_PATH_BIND_FREE_BOT && LP_IsHumanClient(client) && !LP_IsActiveSurvivor(client))
 		{
 			ChangeClientTeam(client, LP_TEAM_SPECTATOR);
+		}
+		if (idleRollback)
+		{
+			LP_IdleRollbackFinished(client, false, bot);
 		}
 	}
 
@@ -258,27 +277,6 @@ int LP_FindAvailableSurvivorBot()
 		}
 	}
 	return 0;
-}
-
-bool LP_InitializeCreatedSurvivorIdentity(int bot, int character)
-{
-	if (!LP_IsSurvivorBot(bot))
-	{
-		LP_LogError("Created Survivor identity initialization failed: bot=%d character=%d stage=not_survivor_bot.",
-			bot, character);
-		return false;
-	}
-	if (!LP_ApplySurvivorIdentity(bot, character))
-	{
-		char actualModel[PLATFORM_MAX_PATH];
-		GetClientModel(bot, actualModel, sizeof(actualModel));
-		int actualCharacter = HasEntProp(bot, Prop_Send, "m_survivorCharacter")
-			? GetEntProp(bot, Prop_Send, "m_survivorCharacter") : -1;
-		LP_LogError("Created Survivor identity initialization failed: bot=%d character=%d stage=apply_or_verify actual_character=%d actual_model=%s.",
-			bot, character, actualCharacter, actualModel);
-		return false;
-	}
-	return true;
 }
 
 int LP_CreateUnlimitedSurvivorBot(const char[] context)

@@ -117,6 +117,14 @@ void LP_ProcessJoinQueue()
 		RequestFrame(LP_FrameContinueJoinQueue);
 		return;
 	}
+	if (!LP_IsPopulationBaselineSatisfied())
+	{
+		LP_LogError("Join creation blocked: client=%N survivors=%d baseline=%d population_ready=%d.",
+			client, LP_GetSurvivorCount(), g_LPMinSurvivors, LP_IsPopulationReady() ? 1 : 0);
+		LP_Print(client, "JoinFailed");
+		RequestFrame(LP_FrameContinueJoinQueue);
+		return;
+	}
 	if (!LP_CanCreateSurvivorBot(client))
 	{
 		RequestFrame(LP_FrameContinueJoinQueue);
@@ -196,6 +204,13 @@ bool LP_JoinSurvivor(int client)
 	if (!LP_IsFreeSpectator(client))
 	{
 		LP_Print(client, "MustBeSpectator");
+		return false;
+	}
+	if (!LP_IsPopulationBaselineSatisfied())
+	{
+		LP_LogError("Join creation blocked: client=%N survivors=%d baseline=%d population_ready=%d.",
+			client, LP_GetSurvivorCount(), g_LPMinSurvivors, LP_IsPopulationReady() ? 1 : 0);
+		LP_Print(client, "JoinFailed");
 		return false;
 	}
 	if (!LP_CanCreateSurvivorBot(client))

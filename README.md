@@ -2,7 +2,7 @@
 
 Self-contained player utilities and Survivor session management for Left 4 Dead 2.
 
-`L4D2 Players` 为求生之路 2 服务器提供自动加入、统一玩家菜单、原生 Idle、Free Spectator、重新加入、5+ 中途出生/装备、自杀、个人自动连跳、角色切换和 AFK 管理。插件内置 `NextBotCreatePlayerBot<SurvivorBot>` 与 `CTerrorPlayer::RoundRespawn` 引擎调用，可在官方 `survivor_limit 4` 保持不变时按需创建 5–16 名 Survivor。
+`L4D2 Players` 为求生之路 2 服务器提供自动加入、每局 baseline Survivor population、统一 human↔Bot Survivor identity、原生 Idle、Free Spectator、重新加入、5+ 中途出生/装备、自杀、个人自动连跳、角色切换和 AFK 管理。插件内置 `NextBotCreatePlayerBot<SurvivorBot>` 与 `CTerrorPlayer::RoundRespawn` 引擎调用，可在官方 `survivor_limit 4` 保持不变时按需创建 5–16 名 Survivor。
 
 ## 功能
 
@@ -18,13 +18,17 @@ Self-contained player utilities and Survivor session management for Left 4 Dead 
 
 Root 管理员可使用 `sm_l4dp_addbot [count]` 诊断 5+ 创建能力。该命令与 `!join` 共用同一内部创建函数、默认创建 1 个 Bot，并受 `sm_l4dp_survivor_limit` 限制；它不会出现在普通玩家菜单中。
 
-新真人进入游戏约 2.5 秒后会自动调用现有 Join 流程：优先接管空闲 Bot，没有空闲 Bot时按 Players 容量创建新 Bot。每次连接只执行一次；玩家主动 `!spec` 后，本次连接及后续换图都不会再次被自动拉回，仍可随时手动 `!join`。
+新真人进入后，Population Manager 会先在回合初始化窗口内一次性补足 `sm_l4dp_min_survivors`（默认 4），Auto Join 再调用现有 Join 流程接管其中一个 Bot。因此标准 Coop 的第一名真人应得到“1 真人 + 3 Bot”，而不是只创建一个 body。Population 不是每秒维持器，战斗中 Bot 死亡和 Human Team Wipe 都不会触发补员。
+
+Auto Join 每次连接只执行一次；玩家主动 `!spec` 后，本次连接及后续换图都不会再次被自动拉回，仍可随时手动 `!join`。只有 baseline 已建立、没有可接管 Bot、并且仍低于 `sm_l4dp_survivor_limit` 时，Join 才创建真正的 5+ Survivor。
 
 只有 Players 为本次 Join 新创建的 5+ Survivor，在 takeover 最终验证成功后才会执行中途出生策略：安全放置在随机存活队友附近，并获得随机 T1 单喷/微冲、地图可用近战（失败时 pistol）及 pills/adrenaline。接回 Idle Bot、接管现有 Bot、换角色、普通复活和过图均不会重置位置或装备。
 
-每个新建 Bot 在 takeover 前会按 Nick → Rochelle → Coach → Ellis 轮转设置 `m_survivorCharacter` 和 Survivor 模型；若需要 `RoundRespawn`，身份会在 respawn 后再次应用并验证。5+ 允许重复角色，`!join` 与 `sm_l4dp_addbot` 共用该初始化路径。
+独立 Identity Lifecycle 同时监听 `player_bot_replace` 和 `bot_player_replace`：human 变 Bot 时把 character/model 传给 replacement Bot，Bot 被 takeover 时再把身份传给 human并于下一帧验证。这一路径统一覆盖 `!afk` ↔ `!join`、existing Bot、newly-created Bot 和 Auto Join；`!csm` 也复用 `character.inc` 中唯一的角色/模型定义。
 
-对应功能开关为 `sm_l4dp_auto_join`、`sm_l4dp_midjoin_spawn_near_player` 和 `sm_l4dp_midjoin_loadout`，v1.0.0 均默认开启。
+Idle 是事务性转换：记录 client serial、reason、原 identity、replacement Bot 与开始时间；只有 spectator、Bot 归属和 identity 全部收敛才提交 Engine Idle。验证超时会通过现有 takeover 状态机回滚到原 Survivor，不会把普通 Free Spectator 当成 Idle 成功。
+
+对应功能开关/容量为 `sm_l4dp_min_survivors`、`sm_l4dp_auto_join`、`sm_l4dp_midjoin_spawn_near_player` 和 `sm_l4dp_midjoin_loadout`，v1.0.0 均使用文档中的默认值。
 
 AFK Manager 默认在 120 秒无操作后自动 Idle，Auto Idle 倒计时使用独立 CenterText，不与 L4D2 原生 spectator/takeover HintText 竞争；Idle 600 秒后踢出。Free Spectator 可以无限旁观，不会因旁观时间被本插件踢出。Human Team Wipe 会在所有本轮参与真人真正死亡后杀死剩余普通 Survivor Bot，让游戏自然判定团灭。所有提示提供英文和简体中文翻译。
 

@@ -5,6 +5,7 @@
 
 ConVar g_LPCvarEnabled;
 ConVar g_LPCvarSurvivorLimit;
+ConVar g_LPCvarMinSurvivors;
 ConVar g_LPCvarAutoIdleSeconds;
 ConVar g_LPCvarAutoIdleWarning;
 ConVar g_LPCvarIdleKickSeconds;
@@ -23,6 +24,7 @@ ConVar g_LPCvarMidJoinLoadout;
 
 bool g_LPEnabled;
 int g_LPSurvivorLimit;
+int g_LPMinSurvivors;
 float g_LPAutoIdleSeconds;
 float g_LPAutoIdleWarningSeconds;
 float g_LPIdleKickSeconds;
@@ -43,6 +45,7 @@ void LP_CreateConfig()
 {
 	g_LPCvarEnabled = CreateConVar("sm_l4dp_enabled", "1", "Enable L4D2 Players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarSurvivorLimit = CreateConVar("sm_l4dp_survivor_limit", "4", "Maximum survivor clients managed by Players.", FCVAR_NOTIFY, true, 1.0, true, 16.0);
+	g_LPCvarMinSurvivors = CreateConVar("sm_l4dp_min_survivors", "4", "Baseline Survivor bodies reconciled once during round initialization.", FCVAR_NOTIFY, true, 1.0, true, 16.0);
 	g_LPCvarAutoIdleSeconds = CreateConVar("sm_l4dp_auto_idle_seconds", "120", "Seconds of inactivity before automatic idle; 0 disables.", FCVAR_NOTIFY, true, 0.0);
 	g_LPCvarAutoIdleWarning = CreateConVar("sm_l4dp_auto_idle_warning_seconds", "10", "Warning lead time for automatic idle.", FCVAR_NOTIFY, true, 0.0);
 	g_LPCvarIdleKickSeconds = CreateConVar("sm_l4dp_idle_kick_seconds", "600", "Seconds in engine idle before kick; 0 disables.", FCVAR_NOTIFY, true, 0.0);
@@ -61,6 +64,7 @@ void LP_CreateConfig()
 
 	g_LPCvarEnabled.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarSurvivorLimit.AddChangeHook(LP_ConVarChanged);
+	g_LPCvarMinSurvivors.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarAutoIdleSeconds.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarAutoIdleWarning.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarIdleKickSeconds.AddChangeHook(LP_ConVarChanged);
@@ -115,6 +119,17 @@ void LP_ApplyConfiguration()
 	{
 		g_LPSurvivorLimit = MaxClients;
 	}
+	g_LPMinSurvivors = g_LPCvarMinSurvivors.IntValue;
+	if (g_LPMinSurvivors > g_LPSurvivorLimit)
+	{
+		LP_LogError("sm_l4dp_min_survivors %d exceeded sm_l4dp_survivor_limit %d and was clamped.",
+			g_LPMinSurvivors, g_LPSurvivorLimit);
+		g_LPMinSurvivors = g_LPSurvivorLimit;
+		if (g_LPCvarMinSurvivors.IntValue != g_LPMinSurvivors)
+		{
+			g_LPCvarMinSurvivors.IntValue = g_LPMinSurvivors;
+		}
+	}
 
 	g_LPAutoIdleSeconds = g_LPCvarAutoIdleSeconds.FloatValue;
 	g_LPAutoIdleWarningSeconds = LP_ClampWarning(g_LPCvarAutoIdleWarning, g_LPCvarAutoIdleWarning.FloatValue, g_LPAutoIdleSeconds, "sm_l4dp_auto_idle_warning_seconds");
@@ -130,9 +145,14 @@ void LP_ApplyConfiguration()
 	g_LPAutoJoinEnabled = g_LPCvarAutoJoin.BoolValue;
 	g_LPMidJoinSpawnNearPlayer = g_LPCvarMidJoinSpawnNearPlayer.BoolValue;
 	g_LPMidJoinLoadout = g_LPCvarMidJoinLoadout.BoolValue;
+	LP_PopulationConfigurationChanged();
 	if (!g_LPEnabled || !g_LPAutoJoinEnabled)
 	{
 		LP_CancelAllAutoJoinTimers();
+	}
+	else
+	{
+		LP_AutoJoinMapStart();
 	}
 	if (!g_LPEnabled || !g_LPAfkHud)
 	{

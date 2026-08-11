@@ -131,6 +131,11 @@ public Action LP_TimerAutoJoin(Handle timer, any serial)
 		LP_CompleteAutoJoinForConnection(client);
 		return Plugin_Stop;
 	}
+	if (!LP_IsPopulationReady())
+	{
+		LP_AutoJoinRetryOrFinish(client, "population_not_ready");
+		return Plugin_Stop;
+	}
 	if (LP_IsSpectatePendingForClient(client) || LP_IsTakeoverPendingForClient(client)
 		|| g_LPIdleVerifyPending[client] || LP_IsJoinQueued(serial))
 	{

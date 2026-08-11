@@ -3,6 +3,7 @@
 
 sm_l4dp_enabled "1"
 sm_l4dp_survivor_limit "4"
+sm_l4dp_min_survivors "4"
 sm_l4dp_auto_join "1"
 sm_l4dp_midjoin_spawn_near_player "1"
 sm_l4dp_midjoin_loadout "1"

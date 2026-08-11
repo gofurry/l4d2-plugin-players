@@ -13,6 +13,7 @@
 #include <l4d2_players/engine>
 #include <l4d2_players/state>
 #include <l4d2_players/character>
+#include <l4d2_players/identity>
 #include <l4d2_players/hud>
 #include <l4d2_players/midjoin>
 #include <l4d2_players/survivor_engine>
@@ -20,6 +21,7 @@
 #include <l4d2_players/join>
 #include <l4d2_players/spectate>
 #include <l4d2_players/human_team_wipe>
+#include <l4d2_players/population>
 #include <l4d2_players/auto_join>
 #include <l4d2_players/suicide>
 #include <l4d2_players/bhop>
@@ -53,10 +55,12 @@ public void OnPluginStart()
 	LP_CreateConfig();
 	LP_InitializeEngine();
 	LP_ResetRuntime();
+	LP_InitializeIdentityLifecycle();
 	LP_InitializeIdle();
 	LP_InitializeJoin();
 	LP_InitializeSpectate();
 	LP_InitializeHumanTeamWipe();
+	LP_InitializePopulation();
 	LP_InitializeBhop();
 	LP_InitializeAfkMonitor();
 	LP_RegisterCommands();
@@ -73,6 +77,8 @@ public void OnPluginStart()
 			if (IsClientInGame(client))
 			{
 				LP_RuntimeClientPutInServer(client);
+				LP_PopulationClientPutInServer(client);
+				LP_AutoJoinClientPutInServer(client);
 			}
 		}
 	}
@@ -92,9 +98,10 @@ public void OnMapStart()
 	g_LPMapEnding = false;
 	LP_StopAllAutoIdleHuds();
 	LP_ClearAllIdleKickHints();
-	LP_HumanTeamWipeMapStart();
-	LP_AutoJoinMapStart();
 	LP_PrecacheCharacterModels();
+	LP_HumanTeamWipeMapStart();
+	LP_PopulationMapStart();
+	LP_AutoJoinMapStart();
 	LP_ResetMapRuntime();
 	LP_StartAfkMonitor();
 }
@@ -107,6 +114,8 @@ public void OnMapEnd()
 	LP_CancelJoinQueue();
 	LP_CancelAllSpectateTransitions();
 	LP_AutoJoinMapEnd();
+	LP_PopulationMapEnd();
+	LP_ResetAllIdentityLifecycleState();
 	LP_HumanTeamWipeMapEnd();
 }
 
@@ -115,6 +124,7 @@ public void OnPluginEnd()
 	LP_StopAfkMonitor();
 	LP_CancelAllSpectateTransitions();
 	LP_CancelAllAutoJoinTimers();
+	LP_CancelPopulationTimer();
 	LP_CancelHumanTeamWipeCheck();
 	LP_ShutdownEngine();
 }
@@ -127,6 +137,7 @@ public void OnClientConnected(int client)
 public void OnClientPutInServer(int client)
 {
 	LP_RuntimeClientPutInServer(client);
+	LP_PopulationClientPutInServer(client);
 	LP_AutoJoinClientPutInServer(client);
 }
 
@@ -138,6 +149,7 @@ public void OnClientDisconnect(int client)
 	LP_JoinClientDisconnected(client);
 	LP_SpectateClientDisconnected(client);
 	LP_CancelAutoJoinTimer(client);
+	LP_IdentityClientDisconnected(client);
 	LP_HumanTeamWipeClientDisconnected(client);
 	LP_RuntimeClientDisconnected(client);
 }

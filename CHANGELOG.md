@@ -2,6 +2,12 @@
 
 ## 1.0.0 - 2026-08-11
 
+- Added a unified Survivor Identity Lifecycle around `player_bot_replace` and `bot_player_replace`; character/model identity now transfers in both directions and is verified again on the next frame for Idle, existing-Bot, newly-created-Bot, and Auto Join takeovers.
+- Added `sm_l4dp_min_survivors` (default 4) and a bounded, initialization-only Population Manager for map start, round start, and the first human client. It uses the existing unlimited creation engine, never writes Valve `survivor_limit`, and does not replenish combat deaths or Human Team Wipe.
+- Ordered Auto Join behind successful baseline reconciliation so the first standard Coop human receives one controlled Survivor plus three normal Survivor Bots; newly-created 5+ mid-join behavior remains isolated to post-baseline expansion.
+- Made manual and automatic Idle one transactional session transition that records serial/reason/original identity/replacement Bot/start time and commits only after team, binding, and identity all converge.
+- Added Idle timeout rollback through the existing takeover state machine. Rollback never runs mid-join placement/loadout and emits fatal-stage diagnostics if recovery itself cannot restore Active Survivor state.
+- Separated lifecycle ownership: `population.inc` owns initial Survivor body count, `identity.inc` owns human↔Bot identity transfer, session modules own Active/Idle/Free Spectator/takeover, and `midjoin.inc` owns only verified newly-created 5+ placement/loadout.
 - Initializes every Players-created Bot with a round-robin Nick/Rochelle/Coach/Ellis identity before takeover, reapplies it after `RoundRespawn`, and verifies both `m_survivorCharacter` and the shared Survivor model mapping.
 - Reuses the same identity/model helper as `!csm`, preventing newly-created Bots from retaining infected models or first-person arms without introducing a second model table.
 - Added default-on, once-per-connection Auto Join with a 2.5-second initial delay and at most three bounded attempts; it calls the existing `LP_JoinSurvivor`/Join queue exclusively.

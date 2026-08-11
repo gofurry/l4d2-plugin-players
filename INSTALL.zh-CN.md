@@ -52,13 +52,16 @@ sm_l4dp_human_team_wipe "1"
 
 ```cfg
 sm_l4dp_survivor_limit "4"
+sm_l4dp_min_survivors "4"
 ```
+
+`sm_l4dp_min_survivors` 是每局初始化阶段的 Survivor body baseline，必须满足 `1 <= min_survivors <= survivor_limit <= 16`。插件会在 map/round start 和第一名真人进入时做有界、一次性 reconcile；战斗中 Bot 死亡、round end 或 Human Team Wipe 不会补 Bot。默认配置下，第一名真人加入标准 Coop 后应为 1 真人 + 3 Bot。
 
 5+ 服务器可将其设置为 `5–16`。该值只是 Players 的业务上限；实际加入还受 `MaxClients` 和可用临时客户端槽影响。Idle 会同时保留真人 spectator 和 Survivor Bot，16 人服务器应为这些客户端实体预留足够容量。
 
 官方 `survivor_limit` 应继续保持 `4`。Players 不会把它设置成 `sm_l4dp_survivor_limit`，而是在没有可接管 Bot 时直接使用内置 NextBot + RoundRespawn 创建路径，因此不会让 Director 在开局自动补出 8/12/16 个 Bot。Players 不检测或调用 L4DToolZ；服务器仍需由 L4DToolZ 等容量基础设施提供足够 `MaxClients`。
 
-Players 创建的每个 Bot 会在 takeover 前按 Nick、Rochelle、Coach、Ellis round-robin 初始化 character/model，并在 RoundRespawn 后重新应用和验证。该步骤只存在于新 Bot 创建函数中，不会修改 Idle 返回或 existing Bot 的角色。
+Players 创建的每个 Bot 会在 takeover 前按 Nick、Rochelle、Coach、Ellis round-robin 初始化 character/model，并在 RoundRespawn 后重新应用和验证。此外，统一 Identity Lifecycle 会在每次 `player_bot_replace` / `bot_player_replace` 时传递并复验 character/model，同时覆盖 Idle、existing Bot、newly-created Bot 和 Auto Join，而不是只在创建时写一次模型。
 
 单真人诊断可由 root 管理员执行：
 
@@ -79,17 +82,21 @@ sm_l4dp_midjoin_spawn_near_player "1"
 sm_l4dp_midjoin_loadout "1"
 ```
 
-Auto Join 在真人完全进入游戏约 2.5 秒后复用 `!join` 路径，过渡状态最多进行 3 次有界尝试。容量已满时玩家保持 Free Spectator；主动 `!spec` 会抑制本次连接剩余时间（包括 changelevel 后）的 Auto Join，手动 `!join` 不受影响。
+Auto Join 在真人完全进入游戏后先等待 baseline reconcile，再复用 `!join` 路径，过渡状态最多进行 3 次有界尝试。容量已满时玩家保持 Free Spectator；主动 `!spec` 会抑制本次连接剩余时间（包括 changelevel 后）的 Auto Join，手动 `!join` 不受影响。
 
 出生位置和装备只应用于“没有自己的 Idle Bot、没有现有空闲 Bot、由 Players 新建 Bot、takeover 最终成功”的 Join。安全位置检查失败时保留引擎出生点；近战优先复用地图中实际存在的 melee script，再尝试内置合法集合，全部失败时至少给予 pistol。该策略绝不会清理 `!afk` → `!join` 或接管现有 Bot 的武器。
 
-## 5. 迁移旧插件
+## 5. Idle 事务与故障诊断
+
+Manual `!afk` 和 Auto Idle 共用同一事务路径。只有 human 处于 team 1、replacement Bot 处于 Survivor、`m_humanSpectatorUserID` 绑定正确且 identity 一致时才提交 Engine Idle。超时时插件会使用现有 takeover 状态机尝试接回 replacement Bot；回滚失败会写入 `FATAL idle rollback failed` 及阶段/client/Bot/identity 诊断，不会把 Free Spectator 误报为 Idle 成功。
+
+## 6. 迁移旧插件
 
 v1.0.0 已覆盖 MultiSlots 的 Survivor 加入、CreateSurvivorBot / `l4d_CreateSurvivorBot` 的无上限 Bot 创建以及旧 AFK dead-bot fix。正式部署前应停用这些重叠插件，避免它们同时换队、创建 Bot 或修复同一 Idle 关系。
 
 Players 自身不依赖 Left4DHooks，但服务器上的其他 bugfix 可能依赖它；是否删除必须单独审计。
 
-## 6. 更新 gamedata
+## 7. 更新 gamedata
 
 游戏更新后若插件报告签名失败：
 

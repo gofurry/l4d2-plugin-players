@@ -31,6 +31,7 @@ public void LP_EventRoundEnd(Event event, const char[] name, bool dontBroadcast)
 	LP_CancelAllIdleVerifications();
 	LP_CancelJoinQueue();
 	LP_CancelAllSpectateTransitions();
+	LP_ResetAllIdentityLifecycleState();
 }
 
 public void LP_EventPlayerSpawn(Event event, const char[] name, bool dontBroadcast)

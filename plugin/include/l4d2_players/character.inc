@@ -163,6 +163,7 @@ public int LP_CharacterMenuHandler(Menu menu, MenuAction action, int client, int
 		LP_Print(client, "CharacterUnavailable");
 		return 0;
 	}
+	LP_CancelIdentityVerification(client);
 	LP_RecordActivity(client);
 	LP_Print(client, "CharacterChanged");
 	return 0;

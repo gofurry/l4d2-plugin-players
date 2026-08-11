@@ -174,6 +174,19 @@ def validate_state_machine_sources(root: Path) -> None:
     human_wipe = (
         root / "plugin" / "include" / "l4d2_players" / "human_team_wipe.inc"
     ).read_text(encoding="utf-8")
+    identity = (
+        root / "plugin" / "include" / "l4d2_players" / "identity.inc"
+    ).read_text(encoding="utf-8")
+    population = (
+        root / "plugin" / "include" / "l4d2_players" / "population.inc"
+    ).read_text(encoding="utf-8")
+    auto_join = (
+        root / "plugin" / "include" / "l4d2_players" / "auto_join.inc"
+    ).read_text(encoding="utf-8")
+    midjoin = (
+        root / "plugin" / "include" / "l4d2_players" / "midjoin.inc"
+    ).read_text(encoding="utf-8")
+    main_source = (root / "plugin" / "src" / "l4d2_players.sp").read_text(encoding="utf-8")
 
     if f'#define LP_VERSION "{EXPECTED_PLUGIN_VERSION}"' not in definitions:
         raise ValueError(f"LP_VERSION must be {EXPECTED_PLUGIN_VERSION}")
@@ -193,12 +206,39 @@ def validate_state_machine_sources(root: Path) -> None:
     )[0]
     if "ChangeClientTeam" in return_path or "LP_BindHumanToBot" in return_path:
         raise ValueError("return-from-idle wrapper must not change team or rebind the existing Idle Bot")
-    if "LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_RETURN_IDLE)" not in return_path:
+    if "LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_RETURN_IDLE, false, idleRollback)" not in return_path:
         raise ValueError("return-from-idle wrapper does not select the dedicated takeover path")
 
-    for fragment in ("LP_IsEngineIdle(stateClient)", "LP_STATE_VERIFY_MAX_FRAMES", "LP_STATE_VERIFY_TIMEOUT"):
+    required_idle_transaction_fragments = (
+        "g_LPIdleVerifySerial[MAXPLAYERS + 1]",
+        "g_LPIdleVerifyReason[MAXPLAYERS + 1]",
+        "g_LPIdleVerifyStartedAt[MAXPLAYERS + 1]",
+        "g_LPIdleOriginalCharacter[MAXPLAYERS + 1]",
+        "g_LPIdleOriginalModel[MAXPLAYERS + 1]",
+        "g_LPIdleExpectedBotUserId[MAXPLAYERS + 1]",
+        "LP_IdleObserveReplacementBot",
+        "LP_IsIdleTransactionSatisfied",
+        "GetClientTeam(client) != LP_TEAM_SPECTATOR",
+        "LP_GetBotHumanSpectatorUserId(bot) != GetClientUserId(client)",
+        "LP_VerifySurvivorIdentity(bot, g_LPIdleOriginalCharacter[client])",
+        "LP_BeginIdleRollback",
+        "LP_ReturnFromIdleBot(client, bot, true)",
+        "LP_BindAndTakeOverBot(client, bot, false, true)",
+        "LP_IdleRollbackFinished",
+        "FATAL idle rollback failed",
+        "LP_STATE_VERIFY_MAX_FRAMES",
+        "LP_STATE_VERIFY_TIMEOUT",
+    )
+    for fragment in required_idle_transaction_fragments:
         if fragment not in idle:
-            raise ValueError(f"bounded Idle verification fragment missing: {fragment}")
+            raise ValueError(f"transactional Idle invariant missing: {fragment}")
+    timeout_path = idle.split("if (g_LPIdleVerifyFrames[stateClient]", 1)[1].split(
+        "RequestFrame(LP_FrameVerifyIdle, serial);", 1
+    )[0]
+    if "LP_BeginIdleRollback(stateClient);" not in timeout_path:
+        raise ValueError("Idle verification timeout must start transactional rollback")
+    if "LP_ResetIdleVerification(stateClient);" in timeout_path:
+        raise ValueError("Idle verification timeout must not silently discard the transaction")
     if "LP_ReturnFromIdleBot(client, bot)" not in join:
         raise ValueError("join flow does not use the dedicated return-from-idle path")
     if "LP_BindAndTakeOverBot(client, bot)" not in join:
@@ -221,6 +261,75 @@ def validate_state_machine_sources(root: Path) -> None:
         if forbidden in human_wipe:
             raise ValueError(f"human team wipe must not directly restart/change maps: {forbidden}")
 
+    required_identity_fragments = (
+        'HookEvent("player_bot_replace", LP_IdentityPlayerBotReplacePre, EventHookMode_Pre)',
+        'HookEvent("player_bot_replace", LP_IdentityPlayerBotReplacePost, EventHookMode_Post)',
+        'HookEvent("bot_player_replace", LP_IdentityBotPlayerReplacePre, EventHookMode_Pre)',
+        'HookEvent("bot_player_replace", LP_IdentityBotPlayerReplacePost, EventHookMode_Post)',
+        "LP_CaptureSurvivorIdentity",
+        "LP_ApplyTransferredSurvivorIdentity",
+        "LP_ScheduleIdentityVerification",
+        "LP_FrameVerifyTransferredIdentity",
+        "LP_IdleObserveReplacementBot(human, bot, character, model)",
+        'LP_Log("Identity player->bot:',
+        'LP_Log("Identity bot->player:',
+        'LP_Log("Identity verification succeeded:',
+    )
+    for fragment in required_identity_fragments:
+        if fragment not in identity:
+            raise ValueError(f"Survivor Identity lifecycle invariant missing: {fragment}")
+    if "SetEntityModel" in identity or "m_survivorCharacter\", character" in identity:
+        raise ValueError("identity.inc must apply identity through character.inc, not duplicate model writes")
+
+    required_population_fragments = (
+        'HookEvent("round_start", LP_PopulationRoundStart',
+        'HookEvent("round_end", LP_PopulationRoundEnd',
+        "LP_PopulationMapStart",
+        "LP_PopulationClientPutInServer",
+        "LP_POPULATION_MAX_ATTEMPTS",
+        'LP_CreateUnlimitedSurvivorBot("population")',
+        "g_LPPopulationReconciledThisRound = true",
+        "g_LPPopulationInitializationWindow = false",
+        'LP_Log("Population reconcile succeeded:',
+        'LP_LogError("FATAL population reconcile failed:',
+    )
+    for fragment in required_population_fragments:
+        if fragment not in population:
+            raise ValueError(f"baseline Population lifecycle invariant missing: {fragment}")
+    if "TIMER_REPEAT" in population or "ForcePlayerSuicide" in population:
+        raise ValueError("Population must be bounded round initialization, never periodic/death maintenance")
+    if 'CreateConVar("sm_l4dp_min_survivors", "4"' not in config:
+        raise ValueError("sm_l4dp_min_survivors must exist and default to 4")
+    if "g_LPMinSurvivors > g_LPSurvivorLimit" not in config:
+        raise ValueError("min Survivor baseline must be clamped to the Players maximum")
+    if "LP_IsPopulationReady()" not in auto_join:
+        raise ValueError("Auto Join must wait for bounded baseline reconciliation")
+    put_in_server = main_source.split("public void OnClientPutInServer", 1)[1].split(
+        "public void OnClientDisconnect", 1
+    )[0]
+    if put_in_server.find("LP_PopulationClientPutInServer(client);") > put_in_server.find(
+        "LP_AutoJoinClientPutInServer(client);"
+    ):
+        raise ValueError("population scheduling must precede Auto Join scheduling")
+    if "LP_IsPopulationBaselineSatisfied()" not in join:
+        raise ValueError("newly-created Join Bots must require the baseline to be satisfied")
+
+    for forbidden in (
+        "LP_ApplySurvivorIdentity",
+        "LP_InitializeCreatedSurvivorIdentity",
+        "m_survivorCharacter",
+        "SetEntityModel",
+        "LP_GoIdle",
+        "LP_BeginIdleRollback",
+        "LP_CreateUnlimitedSurvivorBot",
+    ):
+        if forbidden in midjoin:
+            raise ValueError(f"midjoin.inc crossed lifecycle ownership boundary: {forbidden}")
+    if "LP_ScheduleMidJoinSetup" in population:
+        raise ValueError("baseline Population Bots must never run mid-join setup")
+    if "LP_CreateUnlimitedSurvivorBot" in human_wipe or "LP_SchedulePopulationReconcile" in human_wipe:
+        raise ValueError("Human Team Wipe must not trigger Population replenishment")
+
 
 def validate_unlimited_survivor_creation(root: Path) -> None:
     engine = (root / "plugin" / "include" / "l4d2_players" / "engine.inc").read_text(encoding="utf-8")
@@ -229,6 +338,8 @@ def validate_unlimited_survivor_creation(root: Path) -> None:
     commands = (root / "plugin" / "include" / "l4d2_players" / "commands.inc").read_text(encoding="utf-8")
     config = (root / "plugin" / "include" / "l4d2_players" / "config.inc").read_text(encoding="utf-8")
     character = (root / "plugin" / "include" / "l4d2_players" / "character.inc").read_text(encoding="utf-8")
+    identity = (root / "plugin" / "include" / "l4d2_players" / "identity.inc").read_text(encoding="utf-8")
+    population = (root / "plugin" / "include" / "l4d2_players" / "population.inc").read_text(encoding="utf-8")
     gamedata = (root / "gamedata" / "l4d2_players.txt").read_text(encoding="utf-8")
     all_plugin_source = "\n".join(
         path.read_text(encoding="utf-8") for path in (root / "plugin").rglob("*.*")
@@ -288,12 +399,12 @@ def validate_unlimited_survivor_creation(root: Path) -> None:
         raise ValueError("created Survivor identity must be applied before and after RoundRespawn")
     for fragment in (
         "bool LP_InitializeCreatedSurvivorIdentity(int bot, int character)",
-        "LP_ApplySurvivorIdentity(bot, character)",
-        "LP_VerifySurvivorIdentity(bot, character)",
-        'LP_Log("Created Survivor identity initialized: bot=%d character=%d model=%s."',
+        "LP_ApplyTransferredSurvivorIdentity(bot, character, model)",
     ):
-        if fragment not in survivor_engine:
+        if fragment not in identity:
             raise ValueError(f"created Survivor identity invariant missing: {fragment}")
+    if 'LP_Log("Created Survivor identity initialized: bot=%d character=%d model=%s."' not in survivor_engine:
+        raise ValueError("created Survivor identity success log is missing")
 
     required_character_fragments = (
         "#define LP_L4D2_SURVIVOR_CHARACTER_COUNT 4",
@@ -331,8 +442,10 @@ def validate_unlimited_survivor_creation(root: Path) -> None:
         raise ValueError("sm_l4dp_addbot does not use the shared creation function")
     if 'menu.AddItem("addbot"' in commands:
         raise ValueError("admin diagnostic command must not appear in the player menu")
-    if all_plugin_source.count("LP_CreateUnlimitedSurvivorBot(") != 3:
-        raise ValueError("expected one shared unlimited creation function and exactly two callers")
+    if 'LP_CreateUnlimitedSurvivorBot("population")' not in population:
+        raise ValueError("baseline Population does not use the shared unlimited creation function")
+    if all_plugin_source.count("LP_CreateUnlimitedSurvivorBot(") != 4:
+        raise ValueError("expected one shared unlimited creation function and exactly three callers")
 
     if 'CreateConVar("sm_l4dp_survivor_limit", "4"' not in config or "true, 16.0" not in config:
         raise ValueError("Players Survivor capacity must default to 4 and remain capped at 16")
@@ -704,6 +817,74 @@ def validate_spectator_kick_removed(root: Path, phrases: dict[str, dict[str, str
             raise ValueError(f"removed Spectator Kick test remains: {stale}")
 
 
+def validate_release_lifecycle_docs(root: Path) -> None:
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    install = (root / "INSTALL.zh-CN.md").read_text(encoding="utf-8")
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    checklist = (root / "docs" / "v1.0-test-checklist.md").read_text(encoding="utf-8")
+    example = (root / "l4d2_players.cfg.example").read_text(encoding="utf-8")
+
+    for name, content, fragments in (
+        (
+            "README.md",
+            readme,
+            (
+                "sm_l4dp_min_survivors",
+                "Population Manager",
+                "Identity Lifecycle",
+                "player_bot_replace",
+                "bot_player_replace",
+                "Idle \u662f\u4e8b\u52a1\u6027\u8f6c\u6362",
+            ),
+        ),
+        (
+            "INSTALL.zh-CN.md",
+            install,
+            (
+                'sm_l4dp_min_survivors "4"',
+                "1 <= min_survivors <= survivor_limit <= 16",
+                "FATAL idle rollback failed",
+                "Human Team Wipe \u4e0d\u4f1a\u8865 Bot",
+            ),
+        ),
+        (
+            "CHANGELOG.md",
+            changelog,
+            (
+                "## 1.0.0",
+                "Survivor Identity Lifecycle",
+                "Population Manager",
+                "Idle timeout rollback",
+            ),
+        ),
+        (
+            "l4d2_players.cfg.example",
+            example,
+            ('sm_l4dp_min_survivors "4"',),
+        ),
+    ):
+        for fragment in fragments:
+            if fragment not in content:
+                raise ValueError(f"release lifecycle documentation missing from {name}: {fragment}")
+
+    required_linux_tests = (
+        "1. \u5e72\u51c0 restart / changelevel",
+        "2. \u8fde\u7eed changelevel",
+        "3. \u8e22\u5149 Bot \u540e changelevel",
+        "4. \u8fde\u7eed\u6267\u884c `!afk`",
+        "5. \u8fde\u7eed\u5b8c\u6210 Auto Idle",
+        "6. Free Spectator",
+        "7. \u65e0 existing Bot",
+        "8. root \u4f7f\u7528 `sm_l4dp_addbot`",
+        "9. \u89e6\u53d1 Human Team Wipe",
+        "10. `!spec`",
+        "\u672a\u6267\u884c\u524d\u4e0d\u5ba3\u79f0\u5b9e\u673a\u901a\u8fc7",
+    )
+    for fragment in required_linux_tests:
+        if fragment not in checklist:
+            raise ValueError(f"release-blocker Linux checklist scenario missing: {fragment}")
+
+
 def compile_signature(spec: str) -> re.Pattern[bytes]:
     chunks: list[bytes] = []
     for token in spec.split():
@@ -743,6 +924,7 @@ def main() -> int:
     validate_afk_hint_sources(root)
     validate_free_spectator_sources(root, phrases)
     validate_spectator_kick_removed(root, phrases)
+    validate_release_lifecycle_docs(root)
     print(f"SourceMod translation SMC validation passed ({len(phrases)} phrase sections).")
     print("Idle/takeover state-machine source invariants passed.")
     print("Shared unlimited Survivor Bot creation invariants passed.")
@@ -750,6 +932,7 @@ def main() -> int:
     print("Auto Idle CenterText and Idle Kick HintText lifecycle invariants passed.")
     print("Explicit Free Spectator and localized chat-prefix invariants passed.")
     print("Spectator Kick removal and current configuration invariants passed.")
+    print("Release-blocker lifecycle documentation and Linux checklist invariants passed.")
     print("Static dependency and gamedata key validation passed.")
 
     if len(sys.argv) == 3 and sys.argv[2]:
