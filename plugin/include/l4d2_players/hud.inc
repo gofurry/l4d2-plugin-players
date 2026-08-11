@@ -23,10 +23,45 @@ void LP_BroadcastIdleKick(int subject)
 	}
 }
 
-void LP_ClearAfkHint(int client)
+void LP_StopAutoIdleHud(int client)
 {
 	if (client < 1 || client > MaxClients
-		|| g_LPPlayers[client].playersHint == LP_PLAYERS_HINT_NONE)
+		|| !g_LPPlayers[client].autoIdleHudVisible)
+	{
+		return;
+	}
+
+	g_LPPlayers[client].autoIdleHudVisible = false;
+	if (IsClientInGame(client) && !IsFakeClient(client))
+	{
+		PrintCenterText(client, " ");
+	}
+}
+
+void LP_StopAllAutoIdleHuds()
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		LP_StopAutoIdleHud(client);
+	}
+}
+
+void LP_ShowAutoIdleCenterText(int client, int seconds)
+{
+	if (!g_LPAfkHud || !LP_IsActiveSurvivor(client)
+		|| LP_IsAutomaticIdleVerificationPending(client))
+	{
+		LP_StopAutoIdleHud(client);
+		return;
+	}
+
+	g_LPPlayers[client].autoIdleHudVisible = true;
+	PrintCenterText(client, "%T", "AutoIdleWarning", client, seconds);
+}
+
+void LP_ClearIdleKickHint(int client)
+{
+	if (client < 1 || client > MaxClients || !g_LPPlayers[client].idleKickWarning)
 	{
 		return;
 	}
@@ -40,40 +75,25 @@ void LP_ClearAfkHint(int client)
 			EndMessage();
 		}
 	}
-	switch (g_LPPlayers[client].playersHint)
-	{
-		case LP_PLAYERS_HINT_AUTO_IDLE: g_LPPlayers[client].autoIdleWarning = false;
-		case LP_PLAYERS_HINT_IDLE_KICK: g_LPPlayers[client].idleKickWarning = false;
-	}
-	g_LPPlayers[client].playersHint = LP_PLAYERS_HINT_NONE;
+	g_LPPlayers[client].idleKickWarning = false;
 }
 
-void LP_ClearAllAfkHints()
+void LP_ClearAllIdleKickHints()
 {
 	for (int client = 1; client <= MaxClients; client++)
 	{
-		LP_ClearAfkHint(client);
+		LP_ClearIdleKickHint(client);
 	}
-}
-
-void LP_ShowAfkHint(int client, LPPlayersHint hint, const char[] phrase, int seconds)
-{
-	if (!g_LPAfkHud || !LP_IsHumanClient(client))
-	{
-		LP_ClearAfkHint(client);
-		return;
-	}
-
-	g_LPPlayers[client].playersHint = hint;
-	PrintHintText(client, "%T", phrase, client, seconds);
-}
-
-void LP_ShowAutoIdleHint(int client, int seconds)
-{
-	LP_ShowAfkHint(client, LP_PLAYERS_HINT_AUTO_IDLE, "AutoIdleWarning", seconds);
 }
 
 void LP_ShowIdleKickHint(int client, int seconds)
 {
-	LP_ShowAfkHint(client, LP_PLAYERS_HINT_IDLE_KICK, "IdleKickWarning", seconds);
+	if (!g_LPAfkHud || !LP_IsHumanClient(client))
+	{
+		LP_ClearIdleKickHint(client);
+		return;
+	}
+
+	g_LPPlayers[client].idleKickWarning = true;
+	PrintHintText(client, "%T", "IdleKickWarning", client, seconds);
 }

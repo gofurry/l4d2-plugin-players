@@ -18,6 +18,7 @@ L4D2 server binary
 - `join.inc`：串行化 Bot 创建，避免并发请求接管同一个 Bot。
 - `spectate.inc`：将 Active/Engine Idle 状态有界转换为 Free Spectator，并验证 Idle Bot 解绑后仍被保留。
 - `runtime.inc`：保存每个客户端的活动、Idle、旁观和个人设置状态。
+- `hud.inc`：Auto Idle 只使用独立 CenterText 可见状态；Idle Kick 独立保留 HintText，两者不共享 enum 或清理路径。
 - `afk_monitor.inc`：唯一的长期 1 秒 Timer；没有 per-client 长期 Timer。
 - `human_team_wipe.inc`：记录本轮真人 Survivor 参与/死亡状态，在安全延迟后让剩余 Bot 自杀并交由游戏自然判定团灭。
 

@@ -24,7 +24,7 @@
 
 ## AFK
 
-活动会重置 Auto Idle 时间。任何合法原生 Idle 来源都进入统一 Idle Kick 计时。管理员只豁免 Idle Kick，不豁免 Auto Idle。
+活动会重置 Auto Idle 时间。Auto Idle Warning 只使用 CenterText，只有 Active Survivor 在 warning window 内才每秒刷新；发起 automatic Idle 请求后立即停止，不使用或清理 HintText。Idle Kick 独立保留 HintText 警告。任何合法原生 Idle 来源都进入统一 Idle Kick 计时。管理员只豁免 Idle Kick，不豁免 Auto Idle。
 
 ## Human Team Wipe
 

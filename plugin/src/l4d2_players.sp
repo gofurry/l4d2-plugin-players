@@ -88,7 +88,8 @@ public void OnConfigsExecuted()
 public void OnMapStart()
 {
 	g_LPMapEnding = false;
-	LP_ClearAllAfkHints();
+	LP_StopAllAutoIdleHuds();
+	LP_ClearAllIdleKickHints();
 	LP_HumanTeamWipeMapStart();
 	LP_PrecacheCharacterModels();
 	LP_ResetMapRuntime();
@@ -125,7 +126,8 @@ public void OnClientPutInServer(int client)
 
 public void OnClientDisconnect(int client)
 {
-	LP_ClearAfkHint(client);
+	LP_StopAutoIdleHud(client);
+	LP_ClearIdleKickHint(client);
 	LP_IdleClientDisconnected(client);
 	LP_JoinClientDisconnected(client);
 	LP_SpectateClientDisconnected(client);

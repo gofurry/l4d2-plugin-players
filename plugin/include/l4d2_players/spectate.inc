@@ -136,7 +136,8 @@ void LP_FinishFreeSpectate(int client, bool success)
 		g_LPPlayers[client].lastActivityTime = GetGameTime();
 		g_LPPlayers[client].idleSince = 0.0;
 		g_LPPlayers[client].wasIdle = false;
-		LP_ClearAfkHint(client);
+		LP_StopAutoIdleHud(client);
+		LP_ClearIdleKickHint(client);
 		LP_HumanTeamWipeLeaveForFreeSpectator(client);
 		LP_Print(client, "NowSpectating");
 		LP_Log("Free spectator verified: client=%N released_bot=%d.", client, originalBot);
@@ -208,6 +209,7 @@ Action LP_CommandSpectate(int client)
 		return Plugin_Handled;
 	}
 	LP_RecordActivity(client);
+	LP_StopAutoIdleHud(client);
 	if (!g_LPEnabled)
 	{
 		LP_Print(client, "PluginDisabled");

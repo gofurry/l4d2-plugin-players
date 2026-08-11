@@ -15,10 +15,9 @@ enum struct LPPlayerRuntime
 	bool hasEyeAngles;
 	int lastButtons;
 	int lastWeapon;
-	bool autoIdleWarning;
+	bool autoIdleHudVisible;
 	bool idleKickWarning;
 	bool wasIdle;
-	LPPlayersHint playersHint;
 }
 
 LPPlayerRuntime g_LPPlayers[MAXPLAYERS + 1];
@@ -37,10 +36,9 @@ void LP_ResetClientRuntime(int client)
 	g_LPPlayers[client].hasEyeAngles = false;
 	g_LPPlayers[client].lastButtons = 0;
 	g_LPPlayers[client].lastWeapon = 0;
-	g_LPPlayers[client].autoIdleWarning = false;
+	g_LPPlayers[client].autoIdleHudVisible = false;
 	g_LPPlayers[client].idleKickWarning = false;
 	g_LPPlayers[client].wasIdle = false;
-	g_LPPlayers[client].playersHint = LP_PLAYERS_HINT_NONE;
 }
 
 void LP_ResetRuntime()
@@ -62,7 +60,7 @@ void LP_ResetMapRuntime()
 		}
 		g_LPPlayers[client].lastActivityTime = now;
 		g_LPPlayers[client].idleSince = 0.0;
-		g_LPPlayers[client].autoIdleWarning = false;
+		g_LPPlayers[client].autoIdleHudVisible = false;
 		g_LPPlayers[client].idleKickWarning = false;
 		g_LPPlayers[client].wasIdle = false;
 		g_LPPlayers[client].hasEyeAngles = false;
@@ -102,9 +100,5 @@ void LP_RecordActivity(int client)
 		return;
 	}
 	g_LPPlayers[client].lastActivityTime = GetGameTime();
-	g_LPPlayers[client].autoIdleWarning = false;
-	if (g_LPPlayers[client].playersHint == LP_PLAYERS_HINT_AUTO_IDLE)
-	{
-		LP_ClearAfkHint(client);
-	}
+	LP_StopAutoIdleHud(client);
 }

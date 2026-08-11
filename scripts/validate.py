@@ -33,7 +33,7 @@ WINDOWS_SIGNATURES = {
     "CDirector::AddSurvivorBot": "55 8B EC 8B 89 ?? ?? ?? ?? 83 EC ?? 56 8D 45 FF",
 }
 
-EXPECTED_PLUGIN_VERSION = "0.3.3"
+EXPECTED_PLUGIN_VERSION = "0.3.4"
 
 PARAMETERIZED_PHRASES = {
     "AutoIdleWarning": "{1:d}",
@@ -235,28 +235,52 @@ def validate_afk_hint_sources(root: Path) -> None:
     takeover = (
         root / "plugin" / "include" / "l4d2_players" / "survivor_engine.inc"
     ).read_text(encoding="utf-8")
+    join = (root / "plugin" / "include" / "l4d2_players" / "join.inc").read_text(
+        encoding="utf-8"
+    )
+    spectate = (root / "plugin" / "include" / "l4d2_players" / "spectate.inc").read_text(
+        encoding="utf-8"
+    )
     main_source = (root / "plugin" / "src" / "l4d2_players.sp").read_text(encoding="utf-8")
 
     required_fragments = {
-        "definitions.inc": ("enum LPPlayersHint", "LP_PLAYERS_HINT_AUTO_IDLE", "LP_PLAYERS_HINT_IDLE_KICK"),
-        "runtime.inc": ("LPPlayersHint playersHint;", "LP_ClearAfkHint(client);"),
+        "runtime.inc": ("bool autoIdleHudVisible;", "bool idleKickWarning;", "LP_StopAutoIdleHud(client);"),
         "hud.inc": (
-            "void LP_ClearAfkHint(int client)",
-            "g_LPPlayers[client].playersHint == LP_PLAYERS_HINT_NONE",
-            'StartMessageOne("HintText", client, USERMSG_RELIABLE)',
-            'BfWriteString(message, "");',
-            "void LP_ClearAllAfkHints()",
-            "void LP_ShowAfkHint(int client, LPPlayersHint hint",
+            "void LP_StopAutoIdleHud(int client)",
+            "!g_LPPlayers[client].autoIdleHudVisible",
+            'PrintCenterText(client, " ");',
+            "void LP_ShowAutoIdleCenterText(int client, int seconds)",
+            "!LP_IsActiveSurvivor(client)",
+            "LP_IsAutomaticIdleVerificationPending(client)",
+            'PrintCenterText(client, "%T", "AutoIdleWarning", client, seconds);',
+            "void LP_ClearIdleKickHint(int client)",
+            "!g_LPPlayers[client].idleKickWarning",
+            'PrintHintText(client, "%T", "IdleKickWarning", client, seconds);',
         ),
         "afk_monitor.inc": (
             'HookEvent("player_team", LP_EventPlayerTeam',
-            "LP_ClearAllAfkHints();",
+            "LP_StopAllAutoIdleHuds();",
+            "LP_IsAutomaticIdleVerificationPending(client)",
+            "LP_ShowAutoIdleCenterText(client",
+            "LP_GoIdle(client, LP_IDLE_REASON_AUTOMATIC, false)",
             "default:",
-            "LP_ClearAfkHint(client);",
+            "LP_StopAutoIdleHud(client);",
         ),
-        "idle.inc": ("LP_ClearAfkHint(stateClient);",),
-        "survivor_engine.inc": ("if (success)", "LP_ClearAfkHint(client);"),
-        "l4d2_players.sp": ("public void OnMapEnd()", "public void OnClientDisconnect(int client)", "LP_ClearAfkHint(client);"),
+        "idle.inc": (
+            "LP_IsAutomaticIdleVerificationPending",
+            "if (reason == LP_IDLE_REASON_AUTOMATIC)",
+            "LP_StopAutoIdleHud(client);",
+            "LP_StopAutoIdleHud(stateClient);",
+        ),
+        "survivor_engine.inc": ("if (success)", "LP_StopAutoIdleHud(client);", "LP_ClearIdleKickHint(client);"),
+        "join.inc": ("LP_StopAutoIdleHud(client);",),
+        "spectate.inc": ("LP_StopAutoIdleHud(client);",),
+        "l4d2_players.sp": (
+            "public void OnMapEnd()",
+            "public void OnClientDisconnect(int client)",
+            "LP_StopAutoIdleHud(client);",
+            "LP_ClearIdleKickHint(client);",
+        ),
     }
     contents = {
         "definitions.inc": definitions,
@@ -265,6 +289,8 @@ def validate_afk_hint_sources(root: Path) -> None:
         "afk_monitor.inc": afk,
         "idle.inc": idle,
         "survivor_engine.inc": takeover,
+        "join.inc": join,
+        "spectate.inc": spectate,
         "l4d2_players.sp": main_source,
     }
     for filename, fragments in required_fragments.items():
@@ -273,11 +299,40 @@ def validate_afk_hint_sources(root: Path) -> None:
                 raise ValueError(f"AFK hint lifecycle fragment missing from {filename}: {fragment}")
 
     all_source = "\n".join(contents.values())
-    if "ShowSyncHudText" in all_source:
-        raise ValueError("L4D2 AFK hints must continue using hint boxes, not ShowSyncHudText")
-    clear_path = hud.split("void LP_ClearAfkHint", 1)[1].split("void LP_ClearAllAfkHints", 1)[0]
-    if 'PrintHintText(client, "")' in clear_path or "%T" in clear_path or "seconds" in clear_path:
-        raise ValueError("AFK hint clearing must send a raw empty HintText without format arguments")
+    for removed in (
+        "LPPlayersHint",
+        "playersHint",
+        "LP_PLAYERS_HINT_",
+        "LP_ClearAfkHint",
+        "LP_ClearAllAfkHints",
+        "LP_ShowAfkHint",
+        "LP_ShowAutoIdleHint",
+        "autoIdleWarning",
+    ):
+        if removed in all_source:
+            raise ValueError(f"removed unified Hint lifecycle fragment remains: {removed}")
+
+    auto_hud_path = hud.split("void LP_StopAutoIdleHud", 1)[1].split(
+        "void LP_ClearIdleKickHint", 1
+    )[0]
+    for forbidden in ("HintText", "PrintHintText", "BfWrite", "StartMessage", 'PrintCenterText(client, "")'):
+        if forbidden in auto_hud_path:
+            raise ValueError(f"Auto Idle CenterText path must not touch HintText or use an empty clear: {forbidden}")
+    if auto_hud_path.count('PrintCenterText(client, " ");') != 1:
+        raise ValueError("Auto Idle CenterText may be covered only once with a guarded single space")
+
+    if all_source.count("PrintHintText(") != 1:
+        raise ValueError("only the preserved Idle Kick warning may use PrintHintText")
+    if "PrintCenterText(" not in auto_hud_path:
+        raise ValueError("Auto Idle warning must use PrintCenterText")
+
+    active_path = afk.split("void LP_UpdateActiveClient", 1)[1].split(
+        "void LP_UpdateIdleClient", 1
+    )[0]
+    if active_path.find("LP_StopAutoIdleHud(client);") > active_path.find(
+        "LP_GoIdle(client, LP_IDLE_REASON_AUTOMATIC, false);"
+    ):
+        raise ValueError("automatic Idle request must stop CenterText before LP_GoIdle")
 
 
 def validate_free_spectator_sources(root: Path, phrases: dict[str, dict[str, str]]) -> None:
@@ -312,7 +367,7 @@ def validate_free_spectator_sources(root: Path, phrases: dict[str, dict[str, str
         "LP_STATE_VERIFY_TIMEOUT",
         "LP_SPECTATE_STABLE_FRAMES",
         "LP_HumanTeamWipeLeaveForFreeSpectator(client)",
-        "LP_ClearAfkHint(client)",
+        "LP_StopAutoIdleHud(client)",
     )
     for fragment in required_spectate_fragments:
         if fragment not in spectate:
@@ -417,9 +472,9 @@ def main() -> int:
     validate_spectator_kick_removed(root, phrases)
     print(f"SourceMod translation SMC validation passed ({len(phrases)} phrase sections).")
     print("Idle/takeover state-machine source invariants passed.")
-    print("AFK hint lifecycle source invariants passed.")
+    print("Auto Idle CenterText and Idle Kick HintText lifecycle invariants passed.")
     print("Explicit Free Spectator and localized chat-prefix invariants passed.")
-    print("Spectator Kick removal and raw HintText clearing invariants passed.")
+    print("Spectator Kick removal and current configuration invariants passed.")
     print("Static dependency and gamedata key validation passed.")
 
     if len(sys.argv) == 3 and sys.argv[2]:

@@ -41,7 +41,7 @@ void LP_CreateConfig()
 	g_LPCvarAutoIdleWarning = CreateConVar("sm_l4dp_auto_idle_warning_seconds", "10", "Warning lead time for automatic idle.", FCVAR_NOTIFY, true, 0.0);
 	g_LPCvarIdleKickSeconds = CreateConVar("sm_l4dp_idle_kick_seconds", "600", "Seconds in engine idle before kick; 0 disables.", FCVAR_NOTIFY, true, 0.0);
 	g_LPCvarIdleKickWarning = CreateConVar("sm_l4dp_idle_kick_warning_seconds", "60", "Warning lead time for idle kick.", FCVAR_NOTIFY, true, 0.0);
-	g_LPCvarAfkHud = CreateConVar("sm_l4dp_afk_hud", "1", "Show AFK and kick hints.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_LPCvarAfkHud = CreateConVar("sm_l4dp_afk_hud", "1", "Show Auto Idle CenterText and Idle Kick hints.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarAdminKickImmunity = CreateConVar("sm_l4dp_afk_admin_kick_immunity", "1", "Allow matching admins to avoid AFK kicks.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarAdminFlags = CreateConVar("sm_l4dp_afk_admin_flags", "z", "Admin flags immune from AFK kicks.", FCVAR_NOTIFY);
 	g_LPCvarBhopEnabled = CreateConVar("sm_l4dp_bhop_enabled", "1", "Allow personal automatic bunny hop.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -117,7 +117,8 @@ void LP_ApplyConfiguration()
 	g_LPHumanTeamWipeEnabled = g_LPCvarHumanTeamWipe.BoolValue;
 	if (!g_LPEnabled || !g_LPAfkHud)
 	{
-		LP_ClearAllAfkHints();
+		LP_StopAllAutoIdleHuds();
+		LP_ClearAllIdleKickHints();
 	}
 
 	char flags[32];

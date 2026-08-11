@@ -17,7 +17,8 @@ void LP_InitializeAfkMonitor()
 public void LP_EventRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	g_LPMapEnding = false;
-	LP_ClearAllAfkHints();
+	LP_StopAllAutoIdleHuds();
+	LP_ClearAllIdleKickHints();
 	LP_ResetMapRuntime();
 	LP_StartAfkMonitor();
 }
@@ -25,7 +26,8 @@ public void LP_EventRoundStart(Event event, const char[] name, bool dontBroadcas
 public void LP_EventRoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
 	g_LPMapEnding = true;
-	LP_ClearAllAfkHints();
+	LP_StopAllAutoIdleHuds();
+	LP_ClearAllIdleKickHints();
 	LP_CancelAllIdleVerifications();
 	LP_CancelJoinQueue();
 	LP_CancelAllSpectateTransitions();
@@ -37,7 +39,8 @@ public void LP_EventPlayerSpawn(Event event, const char[] name, bool dontBroadca
 	if (LP_IsHumanClient(client))
 	{
 		LP_RecordActivity(client);
-		LP_ClearAfkHint(client);
+		LP_StopAutoIdleHud(client);
+		LP_ClearIdleKickHint(client);
 	}
 }
 
@@ -46,7 +49,8 @@ public void LP_EventPlayerTeam(Event event, const char[] name, bool dontBroadcas
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (client >= 1 && client <= MaxClients)
 	{
-		LP_ClearAfkHint(client);
+		LP_StopAutoIdleHud(client);
+		LP_ClearIdleKickHint(client);
 	}
 }
 
@@ -62,7 +66,8 @@ void LP_StopAfkMonitor()
 {
 	delete g_LPAfkTimer;
 	g_LPAfkTimer = null;
-	LP_ClearAllAfkHints();
+	LP_StopAllAutoIdleHuds();
+	LP_ClearAllIdleKickHints();
 }
 
 float LP_AngleDelta(float first, float second)
@@ -104,10 +109,11 @@ void LP_DetectRunCmdActivity(int client, int buttons, const float vel[3], const 
 
 void LP_UpdateActiveClient(int client, float now)
 {
-	if (g_LPPlayers[client].playersHint != LP_PLAYERS_HINT_NONE
-		&& g_LPPlayers[client].playersHint != LP_PLAYERS_HINT_AUTO_IDLE)
+	LP_ClearIdleKickHint(client);
+	if (LP_IsAutomaticIdleVerificationPending(client))
 	{
-		LP_ClearAfkHint(client);
+		LP_StopAutoIdleHud(client);
+		return;
 	}
 	if (g_LPPlayers[client].wasIdle)
 	{
@@ -119,8 +125,7 @@ void LP_UpdateActiveClient(int client, float now)
 
 	if (g_LPAutoIdleSeconds <= 0.0 || !IsPlayerAlive(client))
 	{
-		g_LPPlayers[client].autoIdleWarning = false;
-		LP_ClearAfkHint(client);
+		LP_StopAutoIdleHud(client);
 		return;
 	}
 
@@ -128,39 +133,31 @@ void LP_UpdateActiveClient(int client, float now)
 	float warningAt = g_LPAutoIdleSeconds - g_LPAutoIdleWarningSeconds;
 	if (g_LPAutoIdleWarningSeconds > 0.0 && inactive >= warningAt && inactive < g_LPAutoIdleSeconds)
 	{
-		g_LPPlayers[client].autoIdleWarning = true;
-		LP_ShowAutoIdleHint(client, RoundToCeil(g_LPAutoIdleSeconds - inactive));
+		LP_ShowAutoIdleCenterText(client, RoundToCeil(g_LPAutoIdleSeconds - inactive));
 	}
 	else
 	{
-		g_LPPlayers[client].autoIdleWarning = false;
-		LP_ClearAfkHint(client);
+		LP_StopAutoIdleHud(client);
 	}
 	if (inactive >= g_LPAutoIdleSeconds)
 	{
-		LP_ClearAfkHint(client);
+		LP_StopAutoIdleHud(client);
 		LP_GoIdle(client, LP_IDLE_REASON_AUTOMATIC, false);
 	}
 }
 
 void LP_UpdateIdleClient(int client, float now)
 {
-	if (g_LPPlayers[client].playersHint != LP_PLAYERS_HINT_NONE
-		&& g_LPPlayers[client].playersHint != LP_PLAYERS_HINT_IDLE_KICK)
-	{
-		LP_ClearAfkHint(client);
-	}
+	LP_StopAutoIdleHud(client);
 	if (!g_LPPlayers[client].wasIdle || g_LPPlayers[client].idleSince <= 0.0)
 	{
 		g_LPPlayers[client].idleSince = now;
 	}
 	g_LPPlayers[client].wasIdle = true;
-	g_LPPlayers[client].autoIdleWarning = false;
 
 	if (g_LPIdleKickSeconds <= 0.0 || LP_HasAdminKickImmunity(client))
 	{
-		g_LPPlayers[client].idleKickWarning = false;
-		LP_ClearAfkHint(client);
+		LP_ClearIdleKickHint(client);
 		return;
 	}
 
@@ -168,7 +165,7 @@ void LP_UpdateIdleClient(int client, float now)
 	float remaining = g_LPIdleKickSeconds - elapsed;
 	if (remaining <= 0.0)
 	{
-		LP_ClearAfkHint(client);
+		LP_ClearIdleKickHint(client);
 		if (g_LPAnnounceIdleKick)
 		{
 			LP_BroadcastIdleKick(client);
@@ -184,8 +181,7 @@ void LP_UpdateIdleClient(int client, float now)
 	}
 	else
 	{
-		g_LPPlayers[client].idleKickWarning = false;
-		LP_ClearAfkHint(client);
+		LP_ClearIdleKickHint(client);
 	}
 }
 
@@ -210,9 +206,8 @@ public Action LP_TimerAfkMonitor(Handle timer)
 			case LP_PLAYER_STATE_SURVIVOR_IDLE: LP_UpdateIdleClient(client, now);
 			default:
 			{
-				g_LPPlayers[client].autoIdleWarning = false;
-				g_LPPlayers[client].idleKickWarning = false;
-				LP_ClearAfkHint(client);
+				LP_StopAutoIdleHud(client);
+				LP_ClearIdleKickHint(client);
 			}
 		}
 	}

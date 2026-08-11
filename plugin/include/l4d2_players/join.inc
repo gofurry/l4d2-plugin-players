@@ -318,6 +318,7 @@ Action LP_CommandJoin(int client)
 	if (LP_IsHumanClient(client))
 	{
 		LP_RecordActivity(client);
+		LP_StopAutoIdleHud(client);
 		if (!g_LPEnabled)
 		{
 			LP_Print(client, "PluginDisabled");

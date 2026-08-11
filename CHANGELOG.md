@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4 - 2026-08-11
+
+- Replaced Auto Idle `HintText` warnings with independently managed `PrintCenterText` countdowns, avoiding the native L4D2 spectator/takeover HintText channel entirely.
+- Removed the shared Players Hint enum and split Auto Idle CenterText visibility from the unchanged Idle Kick HintText lifecycle.
+- Stops Auto Idle CenterText immediately on activity, automatic Idle request, Idle success/failure, `!join`, `!spec`, death, team changes, round/map end, and disconnect.
+- Allows only one guarded single-space CenterText cover after a visible Auto Idle countdown; Auto Idle never sends empty strings, HintText messages, or formatting arguments to clear its display.
+
 ## 0.3.3 - 2026-08-11
 
 - Removed the Spectator Kick feature, its two ConVars, warning HUD, runtime state, translations, and kick path; Free Spectators may now remain indefinitely.

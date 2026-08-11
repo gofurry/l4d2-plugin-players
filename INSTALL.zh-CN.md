@@ -25,7 +25,7 @@ sm_l4dp_spectator_join_grace_seconds
 sm_l4dp_spectator_kick_seconds
 ```
 
-新安装自动生成的配置不再包含这两项。Release 根目录的 `l4d2_players.cfg.example` 也只列出 v0.3.3 仍支持的 CVar。Free Spectator 可无限旁观，不会因时间被 Players 踢出。
+新安装自动生成的配置不再包含这两项。Release 根目录的 `l4d2_players.cfg.example` 也只列出 v0.3.4 仍支持的 CVar。Free Spectator 可无限旁观，不会因时间被 Players 踢出。
 
 ## 2. 推荐 server.cfg
 

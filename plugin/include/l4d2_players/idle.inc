@@ -10,6 +10,12 @@ float g_LPIdleVerifyStartedAt[MAXPLAYERS + 1];
 bool g_LPIdleImmediate[MAXPLAYERS + 1];
 LPIdleReason g_LPIdleVerifyReason[MAXPLAYERS + 1];
 
+bool LP_IsAutomaticIdleVerificationPending(int client)
+{
+	return client >= 1 && client <= MaxClients && g_LPIdleVerifyPending[client]
+		&& g_LPIdleVerifyReason[client] == LP_IDLE_REASON_AUTOMATIC;
+}
+
 void LP_InitializeIdle()
 {
 	HookEvent("player_death", LP_EventPlayerDeathPre, EventHookMode_Pre);
@@ -45,6 +51,10 @@ bool LP_GoIdle(int client, LPIdleReason reason, bool notify = true)
 	if (!g_LPEnabled || LP_IsSpectatePendingForClient(client) || !LP_CanGoIdle(client, notify))
 	{
 		return false;
+	}
+	if (reason == LP_IDLE_REASON_AUTOMATIC)
+	{
+		LP_StopAutoIdleHud(client);
 	}
 
 	if (g_LPIdleVerifyPending[client])
@@ -115,6 +125,7 @@ public void LP_FrameVerifyIdle(any serial)
 	int currentClient = GetClientFromSerial(serial);
 	if (currentClient != stateClient || !LP_IsHumanClient(stateClient))
 	{
+		LP_StopAutoIdleHud(stateClient);
 		LP_ResetIdleVerification(stateClient);
 		return;
 	}
@@ -123,7 +134,7 @@ public void LP_FrameVerifyIdle(any serial)
 		LPIdleReason reason = g_LPIdleVerifyReason[stateClient];
 		g_LPPlayers[stateClient].idleSince = GetGameTime();
 		g_LPPlayers[stateClient].wasIdle = true;
-		LP_ClearAfkHint(stateClient);
+		LP_StopAutoIdleHud(stateClient);
 		LP_ResetIdleVerification(stateClient);
 		LP_HumanTeamWipeObserveClient(stateClient);
 		LP_Print(stateClient, "NowIdle");
@@ -140,6 +151,7 @@ public void LP_FrameVerifyIdle(any serial)
 		int bot = LP_FindIdleBotForHuman(stateClient);
 		LPIdleReason reason = g_LPIdleVerifyReason[stateClient];
 		bool sdkImmediate = g_LPIdleImmediate[stateClient];
+		LP_StopAutoIdleHud(stateClient);
 		LP_LogStateFailure(reason == LP_IDLE_REASON_AUTOMATIC ? "idle_automatic_verify_timeout" : "idle_manual_verify_timeout",
 			stateClient, bot, LP_GetBotHumanSpectatorUserId(bot), sdkImmediate ? 1 : 0);
 		LP_ResetIdleVerification(stateClient);
@@ -154,7 +166,8 @@ public Action LP_EventPlayerDeathPre(Event event, const char[] name, bool dontBr
 	int bot = GetClientOfUserId(event.GetInt("userid"));
 	if (LP_IsHumanClient(bot))
 	{
-		LP_ClearAfkHint(bot);
+		LP_StopAutoIdleHud(bot);
+		LP_ClearIdleKickHint(bot);
 		return Plugin_Continue;
 	}
 	if (!LP_IsSurvivorBot(bot))

@@ -3,7 +3,7 @@
 #endif
 #define _l4d2_players_definitions_included
 
-#define LP_VERSION "0.3.3"
+#define LP_VERSION "0.3.4"
 #define LP_TEAM_UNASSIGNED 0
 #define LP_TEAM_SPECTATOR 1
 #define LP_TEAM_SURVIVOR 2
@@ -29,13 +29,6 @@ enum LPIdleReason
 	LP_IDLE_REASON_MANUAL = 0,
 	LP_IDLE_REASON_AUTOMATIC,
 	LP_IDLE_REASON_ENGINE
-};
-
-enum LPPlayersHint
-{
-	LP_PLAYERS_HINT_NONE = 0,
-	LP_PLAYERS_HINT_AUTO_IDLE,
-	LP_PLAYERS_HINT_IDLE_KICK
 };
 
 bool g_LPLateLoad;
