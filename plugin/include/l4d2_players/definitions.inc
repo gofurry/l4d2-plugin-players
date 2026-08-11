@@ -3,7 +3,7 @@
 #endif
 #define _l4d2_players_definitions_included
 
-#define LP_VERSION "0.3.0"
+#define LP_VERSION "0.3.1"
 #define LP_PREFIX "\x04[Players]\x01"
 #define LP_TEAM_UNASSIGNED 0
 #define LP_TEAM_SPECTATOR 1
@@ -12,6 +12,8 @@
 #define LP_JOIN_QUEUE_SIZE MAXPLAYERS
 #define LP_CREATE_MAX_FRAMES 64
 #define LP_CREATE_TIMEOUT 1.0
+#define LP_STATE_VERIFY_MAX_FRAMES 64
+#define LP_STATE_VERIFY_TIMEOUT 1.0
 #define LP_EYE_ACTIVITY_THRESHOLD 0.5
 
 enum LPPlayerState

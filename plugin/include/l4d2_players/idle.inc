@@ -3,6 +3,13 @@
 #endif
 #define _l4d2_players_idle_included
 
+bool g_LPIdleVerifyPending[MAXPLAYERS + 1];
+int g_LPIdleVerifySerial[MAXPLAYERS + 1];
+int g_LPIdleVerifyFrames[MAXPLAYERS + 1];
+float g_LPIdleVerifyStartedAt[MAXPLAYERS + 1];
+bool g_LPIdleImmediate[MAXPLAYERS + 1];
+LPIdleReason g_LPIdleVerifyReason[MAXPLAYERS + 1];
+
 void LP_InitializeIdle()
 {
 	HookEvent("player_death", LP_EventPlayerDeathPre, EventHookMode_Pre);
@@ -40,36 +47,104 @@ bool LP_GoIdle(int client, LPIdleReason reason, bool notify = true)
 		return false;
 	}
 
-	int serial = GetClientSerial(client);
-	if (!LP_EngineGoAwayFromKeyboard(client))
+	if (g_LPIdleVerifyPending[client])
 	{
-		if (notify) LP_Print(client, "IdleFailed");
-		LP_LogError("Engine idle call failed for client %N.", client);
-		return false;
+		return true;
 	}
 
-	RequestFrame(LP_FrameVerifyIdle, serial);
+	g_LPIdleVerifyPending[client] = true;
+	g_LPIdleVerifySerial[client] = GetClientSerial(client);
+	g_LPIdleVerifyFrames[client] = 0;
+	g_LPIdleVerifyStartedAt[client] = GetGameTime();
+	g_LPIdleVerifyReason[client] = reason;
+	// The immediate result is diagnostic only. Linux can finish the native Idle
+	// transition over multiple frames.
+	g_LPIdleImmediate[client] = LP_EngineGoAwayFromKeyboard(client);
+
+	RequestFrame(LP_FrameVerifyIdle, g_LPIdleVerifySerial[client]);
 	LP_Log("%s idle requested for %N.", reason == LP_IDLE_REASON_AUTOMATIC ? "Automatic" : "Manual", client);
 	return true;
 }
 
+int LP_FindIdleVerificationClient(int serial)
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (g_LPIdleVerifyPending[client] && g_LPIdleVerifySerial[client] == serial)
+		{
+			return client;
+		}
+	}
+	return 0;
+}
+
+void LP_ResetIdleVerification(int client)
+{
+	g_LPIdleVerifyPending[client] = false;
+	g_LPIdleVerifySerial[client] = 0;
+	g_LPIdleVerifyFrames[client] = 0;
+	g_LPIdleVerifyStartedAt[client] = 0.0;
+	g_LPIdleImmediate[client] = false;
+	g_LPIdleVerifyReason[client] = LP_IDLE_REASON_ENGINE;
+}
+
+void LP_IdleClientDisconnected(int client)
+{
+	if (client >= 1 && client <= MaxClients)
+	{
+		LP_ResetIdleVerification(client);
+	}
+}
+
+void LP_CancelAllIdleVerifications()
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		LP_ResetIdleVerification(client);
+	}
+}
+
 public void LP_FrameVerifyIdle(any serial)
 {
-	int client = GetClientFromSerial(serial);
-	if (!LP_IsHumanClient(client))
+	int stateClient = LP_FindIdleVerificationClient(serial);
+	if (stateClient == 0)
 	{
-		return;
-	}
-	if (LP_IsEngineIdle(client))
-	{
-		g_LPPlayers[client].idleSince = GetGameTime();
-		g_LPPlayers[client].wasIdle = true;
-		LP_Print(client, "NowIdle");
 		return;
 	}
 
-	LP_Print(client, "IdleFailed");
-	LP_LogError("Idle verification failed for client %N.", client);
+	int currentClient = GetClientFromSerial(serial);
+	if (currentClient != stateClient || !LP_IsHumanClient(stateClient))
+	{
+		LP_ResetIdleVerification(stateClient);
+		return;
+	}
+	if (LP_IsEngineIdle(stateClient))
+	{
+		LPIdleReason reason = g_LPIdleVerifyReason[stateClient];
+		g_LPPlayers[stateClient].idleSince = GetGameTime();
+		g_LPPlayers[stateClient].wasIdle = true;
+		LP_ResetIdleVerification(stateClient);
+		LP_Print(stateClient, "NowIdle");
+		LP_Log("Idle verified: reason=%s client=%N bot=%d.",
+			reason == LP_IDLE_REASON_AUTOMATIC ? "automatic" : "manual",
+			stateClient, LP_FindIdleBotForHuman(stateClient));
+		return;
+	}
+
+	g_LPIdleVerifyFrames[stateClient]++;
+	if (g_LPIdleVerifyFrames[stateClient] >= LP_STATE_VERIFY_MAX_FRAMES
+		|| GetGameTime() - g_LPIdleVerifyStartedAt[stateClient] >= LP_STATE_VERIFY_TIMEOUT)
+	{
+		int bot = LP_FindIdleBotForHuman(stateClient);
+		LPIdleReason reason = g_LPIdleVerifyReason[stateClient];
+		bool sdkImmediate = g_LPIdleImmediate[stateClient];
+		LP_LogStateFailure(reason == LP_IDLE_REASON_AUTOMATIC ? "idle_automatic_verify_timeout" : "idle_manual_verify_timeout",
+			stateClient, bot, LP_GetBotHumanSpectatorUserId(bot), sdkImmediate ? 1 : 0);
+		LP_ResetIdleVerification(stateClient);
+		LP_Print(stateClient, "IdleFailed");
+		return;
+	}
+	RequestFrame(LP_FrameVerifyIdle, serial);
 }
 
 public Action LP_EventPlayerDeathPre(Event event, const char[] name, bool dontBroadcast)
@@ -86,17 +161,9 @@ public Action LP_EventPlayerDeathPre(Event event, const char[] name, bool dontBr
 		return Plugin_Continue;
 	}
 
-	ChangeClientTeam(human, LP_TEAM_UNASSIGNED);
-	bool bound = LP_EngineSetHumanSpectator(bot, human);
-	bool taken = bound && LP_EngineTakeOverBot(human);
-	if (!taken)
+	if (!LP_ReturnFromIdleBot(human, bot))
 	{
-		ChangeClientTeam(human, LP_TEAM_SPECTATOR);
-		LP_LogError("Dead idle bot recovery failed for client %N and bot %d.", human, bot);
-	}
-	else
-	{
-		LP_Log("Recovered idle client %N from dying bot %d.", human, bot);
+		LP_Print(human, "TakeoverFailed");
 	}
 	return Plugin_Continue;
 }

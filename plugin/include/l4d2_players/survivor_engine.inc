@@ -3,7 +3,46 @@
 #endif
 #define _l4d2_players_survivor_engine_included
 
+enum LPTakeoverPath
+{
+	LP_TAKEOVER_PATH_NONE = 0,
+	LP_TAKEOVER_PATH_RETURN_IDLE,
+	LP_TAKEOVER_PATH_BIND_FREE_BOT
+};
+
 int g_LPBotReservation[MAXPLAYERS + 1];
+bool g_LPTakeoverPending[MAXPLAYERS + 1];
+int g_LPTakeoverSerial[MAXPLAYERS + 1];
+int g_LPTakeoverBot[MAXPLAYERS + 1];
+int g_LPTakeoverInitialHumanSpec[MAXPLAYERS + 1];
+int g_LPTakeoverFrames[MAXPLAYERS + 1];
+float g_LPTakeoverStartedAt[MAXPLAYERS + 1];
+bool g_LPTakeoverImmediate[MAXPLAYERS + 1];
+bool g_LPBindImmediate[MAXPLAYERS + 1];
+LPTakeoverPath g_LPTakeoverPath[MAXPLAYERS + 1];
+
+int LP_GetBotHumanSpectatorUserId(int bot, int fallback = -1)
+{
+	if (bot >= 1 && bot <= MaxClients && IsClientInGame(bot)
+		&& HasEntProp(bot, Prop_Send, "m_humanSpectatorUserID"))
+	{
+		return GetEntProp(bot, Prop_Send, "m_humanSpectatorUserID");
+	}
+	return fallback;
+}
+
+void LP_LogStateFailure(const char[] stage, int client, int bot, int botHumanSpec, int sdkImmediate, int bindImmediate = -1)
+{
+	int team = -1;
+	if (client >= 1 && client <= MaxClients && IsClientInGame(client))
+	{
+		team = GetClientTeam(client);
+	}
+
+	int currentHumanSpec = LP_GetBotHumanSpectatorUserId(bot, botHumanSpec);
+	LP_LogError("State failure: stage=%s client=%d team=%d bot=%d bot_m_humanSpectatorUserID=%d sdk_immediate=%d bind_immediate=%d.",
+		stage, client, team, bot, currentHumanSpec, sdkImmediate, bindImmediate);
+}
 
 bool LP_BindHumanToBot(int client, int bot)
 {
@@ -14,43 +53,182 @@ bool LP_BindHumanToBot(int client, int bot)
 	return LP_EngineSetHumanSpectator(bot, client);
 }
 
-bool LP_TakeOverBot(int client, int bot)
+void LP_ResetTakeoverState(int client)
 {
-	if (!LP_IsHumanClient(client) || !LP_IsSurvivorBot(bot))
+	g_LPTakeoverPending[client] = false;
+	g_LPTakeoverSerial[client] = 0;
+	g_LPTakeoverBot[client] = 0;
+	g_LPTakeoverInitialHumanSpec[client] = -1;
+	g_LPTakeoverFrames[client] = 0;
+	g_LPTakeoverStartedAt[client] = 0.0;
+	g_LPTakeoverImmediate[client] = false;
+	g_LPBindImmediate[client] = false;
+	g_LPTakeoverPath[client] = LP_TAKEOVER_PATH_NONE;
+}
+
+bool LP_HasPendingTakeover()
+{
+	for (int client = 1; client <= MaxClients; client++)
 	{
+		if (g_LPTakeoverPending[client])
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool LP_IsTakeoverPendingForClient(int client)
+{
+	return client >= 1 && client <= MaxClients && g_LPTakeoverPending[client];
+}
+
+int LP_FindPendingTakeoverClient(int serial)
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (g_LPTakeoverPending[client] && g_LPTakeoverSerial[client] == serial)
+		{
+			return client;
+		}
+	}
+	return 0;
+}
+
+void LP_CancelTakeoverForClient(int client)
+{
+	if (client < 1 || client > MaxClients || !g_LPTakeoverPending[client])
+	{
+		return;
+	}
+
+	int bot = g_LPTakeoverBot[client];
+	if (bot >= 1 && bot <= MaxClients)
+	{
+		g_LPBotReservation[bot] = 0;
+	}
+	LP_ResetTakeoverState(client);
+}
+
+void LP_CancelAllTakeovers()
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		LP_CancelTakeoverForClient(client);
+	}
+}
+
+bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path)
+{
+	if (!LP_IsHumanClient(client) || !LP_IsSurvivorBot(bot) || LP_IsTakeoverPendingForClient(client))
+	{
+		LP_LogStateFailure("takeover_precondition", client, bot, -1, -1);
+		return false;
+	}
+	if (path == LP_TAKEOVER_PATH_RETURN_IDLE
+		&& (!LP_IsEngineIdle(client) || LP_FindIdleBotForHuman(client) != bot))
+	{
+		LP_LogStateFailure("return_from_idle_precondition", client, bot, LP_GetBotHumanSpectatorUserId(bot), -1);
 		return false;
 	}
 
-	ChangeClientTeam(client, LP_TEAM_UNASSIGNED);
-	if (!LP_BindHumanToBot(client, bot))
+	g_LPTakeoverPending[client] = true;
+	g_LPTakeoverSerial[client] = GetClientSerial(client);
+	g_LPTakeoverBot[client] = bot;
+	g_LPTakeoverInitialHumanSpec[client] = LP_GetBotHumanSpectatorUserId(bot);
+	g_LPTakeoverFrames[client] = 0;
+	g_LPTakeoverStartedAt[client] = GetGameTime();
+	g_LPTakeoverPath[client] = path;
+	g_LPBindImmediate[client] = true;
+	g_LPBotReservation[bot] = g_LPTakeoverSerial[client];
+
+	if (path == LP_TAKEOVER_PATH_BIND_FREE_BOT)
 	{
-		ChangeClientTeam(client, LP_TEAM_SPECTATOR);
-		return false;
-	}
-	if (!LP_EngineTakeOverBot(client))
-	{
-		ChangeClientTeam(client, LP_TEAM_SPECTATOR);
-		return false;
+		ChangeClientTeam(client, LP_TEAM_UNASSIGNED);
+		g_LPBindImmediate[client] = LP_BindHumanToBot(client, bot);
 	}
 
-	g_LPBotReservation[bot] = 0;
-	LP_RecordActivity(client);
-	RequestFrame(LP_FrameVerifyTakeover, GetClientSerial(client));
+	// The engine can complete this state transition asynchronously on Linux.
+	// The immediate return is diagnostic only; final success is Active Survivor state.
+	g_LPTakeoverImmediate[client] = LP_EngineTakeOverBot(client);
+	RequestFrame(LP_FrameVerifyTakeover, g_LPTakeoverSerial[client]);
 	return true;
+}
+
+bool LP_ReturnFromIdleBot(int client, int bot)
+{
+	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_RETURN_IDLE);
+}
+
+bool LP_BindAndTakeOverBot(int client, int bot)
+{
+	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_BIND_FREE_BOT);
+}
+
+void LP_FinishTakeover(int client, bool success)
+{
+	int bot = g_LPTakeoverBot[client];
+	int initialHumanSpec = g_LPTakeoverInitialHumanSpec[client];
+	bool sdkImmediate = g_LPTakeoverImmediate[client];
+	bool bindImmediate = g_LPBindImmediate[client];
+	LPTakeoverPath path = g_LPTakeoverPath[client];
+
+	if (bot >= 1 && bot <= MaxClients)
+	{
+		g_LPBotReservation[bot] = 0;
+	}
+	LP_ResetTakeoverState(client);
+
+	if (success)
+	{
+		LP_RecordActivity(client);
+		LP_Print(client, "JoinedGame");
+		LP_Log("Takeover verified: path=%s client=%N bot=%d.",
+			path == LP_TAKEOVER_PATH_RETURN_IDLE ? "return_idle" : "bind_free_bot", client, bot);
+	}
+	else
+	{
+		LP_LogStateFailure(path == LP_TAKEOVER_PATH_RETURN_IDLE ? "return_from_idle_verify_timeout" : "bind_takeover_verify_timeout",
+			client, bot, initialHumanSpec, sdkImmediate ? 1 : 0, bindImmediate ? 1 : 0);
+		LP_Print(client, "TakeoverFailed");
+		if (path == LP_TAKEOVER_PATH_BIND_FREE_BOT && LP_IsHumanClient(client) && !LP_IsActiveSurvivor(client))
+		{
+			ChangeClientTeam(client, LP_TEAM_SPECTATOR);
+		}
+	}
+
+	LP_ProcessJoinQueue();
 }
 
 public void LP_FrameVerifyTakeover(any serial)
 {
-	int client = GetClientFromSerial(serial);
-	if (!LP_IsHumanClient(client))
+	int stateClient = LP_FindPendingTakeoverClient(serial);
+	if (stateClient == 0)
 	{
 		return;
 	}
-	if (!LP_IsActiveSurvivor(client))
+
+	int currentClient = GetClientFromSerial(serial);
+	if (currentClient != stateClient || !LP_IsHumanClient(stateClient))
 	{
-		LP_Print(client, "TakeoverFailed");
-		LP_LogError("Takeover verification failed for client %N.", client);
+		LP_CancelTakeoverForClient(stateClient);
+		LP_ProcessJoinQueue();
+		return;
 	}
+	if (LP_IsActiveSurvivor(stateClient))
+	{
+		LP_FinishTakeover(stateClient, true);
+		return;
+	}
+
+	g_LPTakeoverFrames[stateClient]++;
+	if (g_LPTakeoverFrames[stateClient] >= LP_STATE_VERIFY_MAX_FRAMES
+		|| GetGameTime() - g_LPTakeoverStartedAt[stateClient] >= LP_STATE_VERIFY_TIMEOUT)
+	{
+		LP_FinishTakeover(stateClient, false);
+		return;
+	}
+	RequestFrame(LP_FrameVerifyTakeover, serial);
 }
 
 int LP_FindAvailableSurvivorBot()

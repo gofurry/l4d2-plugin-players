@@ -33,6 +33,168 @@ WINDOWS_SIGNATURES = {
     "CDirector::AddSurvivorBot": "55 8B EC 8B 89 ?? ?? ?? ?? 83 EC ?? 56 8D 45 FF",
 }
 
+EXPECTED_PLUGIN_VERSION = "0.3.1"
+
+PARAMETERIZED_PHRASES = {
+    "AutoIdleWarning": "{1:d}",
+    "IdleKickWarning": "{1:d}",
+    "SpectatorKickWarning": "{1:d}",
+    "IdleKickBroadcast": "{1:N}",
+}
+
+
+def tokenize_smc(text: str) -> list[str]:
+    """Tokenize the quoted strings and braces used by SourceMod SMC files."""
+    tokens: list[str] = []
+    index = 0
+    length = len(text)
+    while index < length:
+        if text[index].isspace():
+            index += 1
+            continue
+        if text.startswith("//", index):
+            newline = text.find("\n", index + 2)
+            index = length if newline < 0 else newline + 1
+            continue
+        if text[index] in "{}":
+            tokens.append(text[index])
+            index += 1
+            continue
+        if text[index] != '"':
+            raise ValueError(f"unexpected SMC character at offset {index}: {text[index]!r}")
+
+        index += 1
+        value: list[str] = []
+        while index < length:
+            character = text[index]
+            if character == '"':
+                index += 1
+                tokens.append("".join(value))
+                break
+            if character == "\\":
+                if index + 1 >= length:
+                    raise ValueError("unterminated SMC escape sequence")
+                value.append(character)
+                value.append(text[index + 1])
+                index += 2
+                continue
+            value.append(character)
+            index += 1
+        else:
+            raise ValueError("unterminated SMC quoted string")
+    return tokens
+
+
+def parse_smc_phrases(text: str) -> dict[str, dict[str, str]]:
+    tokens = tokenize_smc(text)
+    position = 0
+
+    def take(expected: str | None = None) -> str:
+        nonlocal position
+        if position >= len(tokens):
+            raise ValueError(f"expected {expected or 'token'}, reached end of SMC file")
+        token = tokens[position]
+        position += 1
+        if expected is not None and token != expected:
+            raise ValueError(f"expected {expected!r}, found {token!r}")
+        return token
+
+    take("Phrases")
+    take("{")
+    phrases: dict[str, dict[str, str]] = {}
+    while position < len(tokens) and tokens[position] != "}":
+        phrase_name = take()
+        if phrase_name in ("{", "}") or phrase_name in phrases:
+            raise ValueError(f"invalid or duplicate phrase section: {phrase_name!r}")
+        take("{")
+        fields: dict[str, str] = {}
+        while position < len(tokens) and tokens[position] != "}":
+            key = take()
+            value = take()
+            if key in ("{", "}") or value in ("{", "}"):
+                raise ValueError(f"phrase {phrase_name!r} must contain quoted key/value pairs")
+            if key in fields:
+                raise ValueError(f"phrase {phrase_name!r} contains duplicate field {key!r}")
+            fields[key] = value
+        take("}")
+        phrases[phrase_name] = fields
+    take("}")
+    if position != len(tokens):
+        raise ValueError("unexpected tokens after the Phrases section")
+    return phrases
+
+
+def validate_translation(path: Path) -> dict[str, dict[str, str]]:
+    phrases = parse_smc_phrases(path.read_text(encoding="utf-8"))
+    if not phrases:
+        raise ValueError("translation file contains no phrase sections")
+
+    for phrase_name, fields in phrases.items():
+        for language in ("en", "chi"):
+            if language not in fields or not fields[language]:
+                raise ValueError(f"phrase {phrase_name!r} is missing language {language!r}")
+            if re.search(r"%(?:d|N)\b", fields[language]):
+                raise ValueError(f"phrase {phrase_name!r} uses a printf placeholder instead of {{1}}")
+
+        expected_format = PARAMETERIZED_PHRASES.get(phrase_name)
+        actual_format = fields.get("#format")
+        if expected_format is None:
+            if actual_format is not None:
+                raise ValueError(f"non-parameterized phrase {phrase_name!r} unexpectedly declares #format")
+            continue
+        if actual_format != expected_format:
+            raise ValueError(
+                f"phrase {phrase_name!r} has #format {actual_format!r}; expected {expected_format!r}"
+            )
+        for language in ("en", "chi"):
+            if "{1}" not in fields[language]:
+                raise ValueError(f"phrase {phrase_name!r} language {language!r} does not use {{1}}")
+
+    missing_parameterized = set(PARAMETERIZED_PHRASES) - set(phrases)
+    if missing_parameterized:
+        raise ValueError(f"missing parameterized phrase sections: {sorted(missing_parameterized)}")
+    return phrases
+
+
+def validate_state_machine_sources(root: Path) -> None:
+    definitions = (root / "plugin" / "include" / "l4d2_players" / "definitions.inc").read_text(
+        encoding="utf-8"
+    )
+    survivor_engine = (
+        root / "plugin" / "include" / "l4d2_players" / "survivor_engine.inc"
+    ).read_text(encoding="utf-8")
+    idle = (root / "plugin" / "include" / "l4d2_players" / "idle.inc").read_text(encoding="utf-8")
+    join = (root / "plugin" / "include" / "l4d2_players" / "join.inc").read_text(encoding="utf-8")
+
+    if f'#define LP_VERSION "{EXPECTED_PLUGIN_VERSION}"' not in definitions:
+        raise ValueError(f"LP_VERSION must be {EXPECTED_PLUGIN_VERSION}")
+    required_engine_fragments = (
+        "LP_TAKEOVER_PATH_RETURN_IDLE",
+        "LP_TAKEOVER_PATH_BIND_FREE_BOT",
+        "LP_IsActiveSurvivor(stateClient)",
+        "LP_STATE_VERIFY_MAX_FRAMES",
+        "LP_STATE_VERIFY_TIMEOUT",
+    )
+    for fragment in required_engine_fragments:
+        if fragment not in survivor_engine:
+            raise ValueError(f"takeover state verification fragment missing: {fragment}")
+
+    return_path = survivor_engine.split("bool LP_ReturnFromIdleBot", 1)[1].split(
+        "bool LP_BindAndTakeOverBot", 1
+    )[0]
+    if "ChangeClientTeam" in return_path or "LP_BindHumanToBot" in return_path:
+        raise ValueError("return-from-idle wrapper must not change team or rebind the existing Idle Bot")
+    if "LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_RETURN_IDLE)" not in return_path:
+        raise ValueError("return-from-idle wrapper does not select the dedicated takeover path")
+
+    for fragment in ("LP_IsEngineIdle(stateClient)", "LP_STATE_VERIFY_MAX_FRAMES", "LP_STATE_VERIFY_TIMEOUT"):
+        if fragment not in idle:
+            raise ValueError(f"bounded Idle verification fragment missing: {fragment}")
+    if "LP_ReturnFromIdleBot(client, bot)" not in join:
+        raise ValueError("join flow does not use the dedicated return-from-idle path")
+    if "LP_BindAndTakeOverBot(client, bot)" not in join:
+        raise ValueError("join flow does not retain the Free Spectator bind path")
+
 
 def compile_signature(spec: str) -> re.Pattern[bytes]:
     chunks: list[bytes] = []
@@ -49,6 +211,7 @@ def main() -> int:
     root = Path(sys.argv[1]).resolve()
     source_root = root / "plugin"
     gamedata_path = root / "gamedata" / "l4d2_players.txt"
+    translation_path = root / "translations" / "l4d2_players.phrases.txt"
 
     source = "\n".join(path.read_text(encoding="utf-8") for path in source_root.rglob("*.*"))
     lowered = source.lower()
@@ -65,6 +228,10 @@ def main() -> int:
         if encoded not in gamedata:
             raise SystemExit(f"gamedata Windows signature does not match validator baseline: {name}")
 
+    phrases = validate_translation(translation_path)
+    validate_state_machine_sources(root)
+    print(f"SourceMod translation SMC validation passed ({len(phrases)} phrase sections).")
+    print("Idle/takeover state-machine source invariants passed.")
     print("Static dependency and gamedata key validation passed.")
 
     if len(sys.argv) == 3 and sys.argv[2]:

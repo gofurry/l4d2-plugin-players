@@ -23,6 +23,7 @@ public void LP_EventRoundStart(Event event, const char[] name, bool dontBroadcas
 public void LP_EventRoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
 	g_LPMapEnding = true;
+	LP_CancelAllIdleVerifications();
 	LP_CancelJoinQueue();
 }
 

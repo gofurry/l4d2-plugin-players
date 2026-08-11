@@ -18,8 +18,12 @@ if (-not [string]::IsNullOrWhiteSpace($binaryPath)) {
     $arguments += $binaryPath
 }
 
+& python (Join-Path $PSScriptRoot "test_validate.py")
+if ($LASTEXITCODE -ne 0) {
+    throw "Validation tests failed. Exit code: $LASTEXITCODE"
+}
+
 & python @arguments
 if ($LASTEXITCODE -ne 0) {
     throw "Validation failed. Exit code: $LASTEXITCODE"
 }
-

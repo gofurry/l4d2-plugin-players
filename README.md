@@ -39,11 +39,10 @@ Copy-Item scripts/config.example.ps1 scripts/config.local.ps1
 ./scripts/package.ps1
 ```
 
-构建产物位于 `dist/l4d2_players.smx`，Release 包为 `dist/l4d2-plugin-players-v0.3.0.zip`。
+构建产物位于 `dist/l4d2_players.smx`，Release 包为 `dist/l4d2-plugin-players-v0.3.1.zip`。
 
 安装、服务器配置和迁移说明见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。当前实现已完成编译、静态依赖和本机 Windows gamedata 签名验证；多人运行行为必须按 `docs/` 下的清单在测试服验证。
 
 ## 许可证
 
 [MIT](LICENSE)
-

@@ -20,6 +20,7 @@ void LP_InitializeJoin()
 
 void LP_CancelJoinQueue()
 {
+	LP_CancelAllTakeovers();
 	g_LPJoinQueueCount = 0;
 	g_LPCreatePending = false;
 	g_LPPendingJoinSerial = 0;
@@ -122,7 +123,7 @@ int LP_FindNewSurvivorBot()
 
 void LP_ProcessJoinQueue()
 {
-	if (g_LPCreatePending || g_LPMapEnding || !g_LPEnabled)
+	if (g_LPCreatePending || LP_HasPendingTakeover() || g_LPMapEnding || !g_LPEnabled)
 	{
 		return;
 	}
@@ -140,24 +141,26 @@ void LP_ProcessJoinQueue()
 	}
 
 	int bot = LP_FindIdleBotForHuman(client);
-	if (bot <= 0)
-	{
-		bot = LP_FindAvailableSurvivorBot();
-	}
 	if (bot > 0)
 	{
-		g_LPBotReservation[bot] = serial;
-		if (LP_TakeOverBot(client, bot))
-		{
-			LP_Print(client, "JoinedGame");
-			LP_Log("Queued client %N took over survivor bot %d.", client, bot);
-		}
-		else
+		if (!LP_ReturnFromIdleBot(client, bot))
 		{
 			g_LPBotReservation[bot] = 0;
 			LP_Print(client, "TakeoverFailed");
+			RequestFrame(LP_FrameContinueJoinQueue);
 		}
-		RequestFrame(LP_FrameContinueJoinQueue);
+		return;
+	}
+
+	bot = LP_FindAvailableSurvivorBot();
+	if (bot > 0)
+	{
+		if (!LP_BindAndTakeOverBot(client, bot))
+		{
+			g_LPBotReservation[bot] = 0;
+			LP_Print(client, "TakeoverFailed");
+			RequestFrame(LP_FrameContinueJoinQueue);
+		}
 		return;
 	}
 	if (!LP_IsFreeSpectator(client))
@@ -209,18 +212,12 @@ public void LP_FrameVerifyCreatedBot(any data)
 		g_LPBotReservation[bot] = g_LPPendingJoinSerial;
 		g_LPCreatePending = false;
 		g_LPPendingJoinSerial = 0;
-		if (LP_TakeOverBot(client, bot))
-		{
-			LP_Print(client, "JoinedGame");
-			LP_Log("Client %N joined through newly created bot %d.", client, bot);
-		}
-		else
+		if (!LP_BindAndTakeOverBot(client, bot))
 		{
 			g_LPBotReservation[bot] = 0;
 			LP_Print(client, "TakeoverFailed");
-			LP_LogError("Takeover of newly created bot %d failed for %N.", bot, client);
+			LP_ProcessJoinQueue();
 		}
-		LP_ProcessJoinQueue();
 		return;
 	}
 
@@ -249,18 +246,29 @@ bool LP_JoinSurvivor(int client)
 		return false;
 	}
 
-	int bot = LP_FindIdleBotForHuman(client);
-	if (bot <= 0)
+	if (LP_IsTakeoverPendingForClient(client))
 	{
-		bot = LP_FindAvailableSurvivorBot();
+		LP_Print(client, "JoinPending");
+		return true;
 	}
+
+	int bot = LP_FindIdleBotForHuman(client);
 	if (bot > 0)
 	{
-		g_LPBotReservation[bot] = GetClientSerial(client);
-		if (LP_TakeOverBot(client, bot))
+		if (LP_ReturnFromIdleBot(client, bot))
 		{
-			LP_Print(client, "JoinedGame");
-			LP_Log("Client %N took over survivor bot %d.", client, bot);
+			return true;
+		}
+		g_LPBotReservation[bot] = 0;
+		LP_Print(client, "TakeoverFailed");
+		return false;
+	}
+
+	bot = LP_FindAvailableSurvivorBot();
+	if (bot > 0)
+	{
+		if (LP_BindAndTakeOverBot(client, bot))
+		{
 			return true;
 		}
 		g_LPBotReservation[bot] = 0;
@@ -283,6 +291,7 @@ bool LP_JoinSurvivor(int client)
 
 void LP_JoinClientDisconnected(int client)
 {
+	LP_CancelTakeoverForClient(client);
 	int serial = GetClientSerial(client);
 	for (int i = 0; i < g_LPJoinQueueCount; )
 	{

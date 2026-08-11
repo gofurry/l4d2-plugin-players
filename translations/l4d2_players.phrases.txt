@@ -1,39 +1,216 @@
 "Phrases"
 {
-	"MenuTitle" { "en" "L4D2 Players" "chi" "L4D2 玩家功能" }
-	"MenuIdle" { "en" "Go idle" "chi" "闲置" }
-	"MenuJoin" { "en" "Join game" "chi" "加入游戏" }
-	"MenuSuicide" { "en" "Suicide" "chi" "自杀" }
-	"MenuBhopOn" { "en" "Automatic bunny hop: On" "chi" "自动连跳：开启" }
-	"MenuBhopOff" { "en" "Automatic bunny hop: Off" "chi" "自动连跳：关闭" }
-	"MenuCharacter" { "en" "Change character" "chi" "更换角色" }
-	"CharacterMenuTitle" { "en" "Choose a survivor" "chi" "选择角色" }
-	"PluginDisabled" { "en" "This feature is currently disabled." "chi" "此功能当前已禁用。" }
-	"MustBeActiveSurvivor" { "en" "You must be an active Survivor." "chi" "你必须是正在游戏中的生还者。" }
-	"MustBeSpectator" { "en" "You must be a free spectator to join." "chi" "你必须是普通旁观者才能加入。" }
-	"MustBeAlive" { "en" "You must be alive." "chi" "你必须处于存活状态。" }
-	"CannotIdlePinned" { "en" "You cannot go idle while controlled by a Special Infected." "chi" "被特殊感染者控制时不能闲置。" }
-	"NoClientSlotIdle" { "en" "No temporary client slot is available for an idle bot." "chi" "当前没有可用于闲置机器人的临时客户端槽位。" }
-	"IdleFailed" { "en" "The engine could not establish an idle relationship." "chi" "引擎无法建立闲置关系。" }
-	"NowIdle" { "en" "You are now idle. Type !join to return." "chi" "你现在处于闲置状态，输入 !join 返回游戏。" }
-	"AlreadyPlaying" { "en" "You are already playing as a Survivor." "chi" "你已经在生还者队伍中。" }
-	"JoinedGame" { "en" "You joined the Survivor team." "chi" "你已加入生还者队伍。" }
-	"TakeoverFailed" { "en" "The Survivor Bot takeover failed." "chi" "接管生还者机器人失败。" }
-	"SurvivorLimitReached" { "en" "The configured Survivor limit has been reached." "chi" "已达到配置的生还者人数上限。" }
-	"NoClientSlot" { "en" "No client slot is available to create a Survivor Bot." "chi" "没有可用于创建生还者机器人的客户端槽位。" }
-	"JoinPending" { "en" "Your join request is already pending." "chi" "你的加入请求正在处理中。" }
-	"JoinFailed" { "en" "Unable to queue your join request." "chi" "无法排队处理你的加入请求。" }
-	"CreatingBot" { "en" "Creating a Survivor Bot..." "chi" "正在创建生还者机器人……" }
-	"BotCreationFailed" { "en" "Survivor Bot creation timed out." "chi" "创建生还者机器人超时。" }
-	"BhopEnabled" { "en" "Automatic bunny hop enabled." "chi" "自动连跳已开启。" }
-	"BhopDisabled" { "en" "Automatic bunny hop disabled." "chi" "自动连跳已关闭。" }
-	"BhopUnavailable" { "en" "Automatic bunny hop is disabled by the server." "chi" "服务器已禁用自动连跳。" }
-	"CharacterUnavailable" { "en" "Character selection is disabled by the server." "chi" "服务器已禁用角色选择。" }
-	"CharacterChanged" { "en" "Your Survivor character was changed." "chi" "你的生还者角色已更换。" }
-	"MapChanging" { "en" "Characters cannot be changed during a map transition." "chi" "换图期间不能更换角色。" }
-	"AutoIdleWarning" { "en" "You will go idle in %d seconds.\nMove or look around to cancel." "chi" "%d 秒后将自动闲置。\n移动或转动视角可取消。" }
-	"IdleKickWarning" { "en" "You have been idle too long.\nYou will be kicked in %d seconds.\nType !join to return." "chi" "你已闲置过久。\n将在 %d 秒后被踢出服务器。\n输入 !join 返回游戏。" }
-	"SpectatorKickWarning" { "en" "You have not joined the game.\nYou will be kicked in %d seconds.\nType !join to play." "chi" "你长时间未加入游戏。\n将在 %d 秒后被踢出服务器。\n输入 !join 加入游戏。" }
-	"IdleKickBroadcast" { "en" "%N was removed for being idle too long." "chi" "%N 因闲置时间过长被移出服务器。" }
-}
+	"MenuTitle"
+	{
+		"en"		"L4D2 Players"
+		"chi"		"L4D2 玩家功能"
+	}
 
+	"MenuIdle"
+	{
+		"en"		"Go idle"
+		"chi"		"闲置"
+	}
+
+	"MenuJoin"
+	{
+		"en"		"Join game"
+		"chi"		"加入游戏"
+	}
+
+	"MenuSuicide"
+	{
+		"en"		"Suicide"
+		"chi"		"自杀"
+	}
+
+	"MenuBhopOn"
+	{
+		"en"		"Automatic bunny hop: On"
+		"chi"		"自动连跳：开启"
+	}
+
+	"MenuBhopOff"
+	{
+		"en"		"Automatic bunny hop: Off"
+		"chi"		"自动连跳：关闭"
+	}
+
+	"MenuCharacter"
+	{
+		"en"		"Change character"
+		"chi"		"更换角色"
+	}
+
+	"CharacterMenuTitle"
+	{
+		"en"		"Choose a survivor"
+		"chi"		"选择角色"
+	}
+
+	"PluginDisabled"
+	{
+		"en"		"This feature is currently disabled."
+		"chi"		"此功能当前已禁用。"
+	}
+
+	"MustBeActiveSurvivor"
+	{
+		"en"		"You must be an active Survivor."
+		"chi"		"你必须是正在游戏中的生还者。"
+	}
+
+	"MustBeSpectator"
+	{
+		"en"		"You must be a free spectator to join."
+		"chi"		"你必须是普通旁观者才能加入。"
+	}
+
+	"MustBeAlive"
+	{
+		"en"		"You must be alive."
+		"chi"		"你必须处于存活状态。"
+	}
+
+	"CannotIdlePinned"
+	{
+		"en"		"You cannot go idle while controlled by a Special Infected."
+		"chi"		"被特殊感染者控制时不能闲置。"
+	}
+
+	"NoClientSlotIdle"
+	{
+		"en"		"No temporary client slot is available for an idle bot."
+		"chi"		"当前没有可用于闲置机器人的临时客户端槽位。"
+	}
+
+	"IdleFailed"
+	{
+		"en"		"The engine could not establish an idle relationship."
+		"chi"		"引擎无法建立闲置关系。"
+	}
+
+	"NowIdle"
+	{
+		"en"		"You are now idle. Type !join to return."
+		"chi"		"你现在处于闲置状态，输入 !join 返回游戏。"
+	}
+
+	"AlreadyPlaying"
+	{
+		"en"		"You are already playing as a Survivor."
+		"chi"		"你已经在生还者队伍中。"
+	}
+
+	"JoinedGame"
+	{
+		"en"		"You joined the Survivor team."
+		"chi"		"你已加入生还者队伍。"
+	}
+
+	"TakeoverFailed"
+	{
+		"en"		"The Survivor Bot takeover failed."
+		"chi"		"接管生还者机器人失败。"
+	}
+
+	"SurvivorLimitReached"
+	{
+		"en"		"The configured Survivor limit has been reached."
+		"chi"		"已达到配置的生还者人数上限。"
+	}
+
+	"NoClientSlot"
+	{
+		"en"		"No client slot is available to create a Survivor Bot."
+		"chi"		"没有可用于创建生还者机器人的客户端槽位。"
+	}
+
+	"JoinPending"
+	{
+		"en"		"Your join request is already pending."
+		"chi"		"你的加入请求正在处理中。"
+	}
+
+	"JoinFailed"
+	{
+		"en"		"Unable to queue your join request."
+		"chi"		"无法排队处理你的加入请求。"
+	}
+
+	"CreatingBot"
+	{
+		"en"		"Creating a Survivor Bot..."
+		"chi"		"正在创建生还者机器人……"
+	}
+
+	"BotCreationFailed"
+	{
+		"en"		"Survivor Bot creation timed out."
+		"chi"		"创建生还者机器人超时。"
+	}
+
+	"BhopEnabled"
+	{
+		"en"		"Automatic bunny hop enabled."
+		"chi"		"自动连跳已开启。"
+	}
+
+	"BhopDisabled"
+	{
+		"en"		"Automatic bunny hop disabled."
+		"chi"		"自动连跳已关闭。"
+	}
+
+	"BhopUnavailable"
+	{
+		"en"		"Automatic bunny hop is disabled by the server."
+		"chi"		"服务器已禁用自动连跳。"
+	}
+
+	"CharacterUnavailable"
+	{
+		"en"		"Character selection is disabled by the server."
+		"chi"		"服务器已禁用角色选择。"
+	}
+
+	"CharacterChanged"
+	{
+		"en"		"Your Survivor character was changed."
+		"chi"		"你的生还者角色已更换。"
+	}
+
+	"MapChanging"
+	{
+		"en"		"Characters cannot be changed during a map transition."
+		"chi"		"换图期间不能更换角色。"
+	}
+
+	"AutoIdleWarning"
+	{
+		"#format"	"{1:d}"
+		"en"		"You will go idle in {1} seconds.\nMove or look around to cancel."
+		"chi"		"{1} 秒后将自动闲置。\n移动或转动视角可取消。"
+	}
+
+	"IdleKickWarning"
+	{
+		"#format"	"{1:d}"
+		"en"		"You have been idle too long.\nYou will be kicked in {1} seconds.\nType !join to return."
+		"chi"		"你已闲置过久。\n将在 {1} 秒后被踢出服务器。\n输入 !join 返回游戏。"
+	}
+
+	"SpectatorKickWarning"
+	{
+		"#format"	"{1:d}"
+		"en"		"You have not joined the game.\nYou will be kicked in {1} seconds.\nType !join to play."
+		"chi"		"你长时间未加入游戏。\n将在 {1} 秒后被踢出服务器。\n输入 !join 加入游戏。"
+	}
+
+	"IdleKickBroadcast"
+	{
+		"#format"	"{1:N}"
+		"en"		"{1} was removed for being idle too long."
+		"chi"		"{1} 因闲置时间过长被移出服务器。"
+	}
+}

@@ -16,7 +16,7 @@
 
 ## Join
 
-优先级不可更改：自己的 Idle Bot、无人绑定且存活的 Survivor Bot、新创建的 Survivor Bot。Bot 创建请求全局串行；超时或请求者离线不会无限重试。只有创建新 Bot 会增加 Survivor 数并受 `sm_l4dp_survivor_limit` 约束。
+优先级不可更改：自己的 Idle Bot、无人绑定且存活的 Survivor Bot、新创建的 Survivor Bot。自己的 Idle Bot 保留现有 human/Bot 关系，只调用内部 takeover；Free Spectator 接管普通 Bot 才执行 unassigned、bind、takeover。两条路径均以有界验证后的 Active Survivor 状态为成功依据。Bot 创建请求全局串行；超时或请求者离线不会无限重试。只有创建新 Bot 会增加 Survivor 数并受 `sm_l4dp_survivor_limit` 约束。
 
 ## AFK
 
@@ -25,4 +25,3 @@
 ## QoL
 
 Bhop 只重放跳跃边沿，不修改速度或物理 CVar。角色切换同时修改 `m_survivorCharacter` 和模型，允许重复且不持久化。
-

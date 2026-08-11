@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$version = "0.3.0"
+$version = "0.3.1"
 $projectRoot = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path
 $artifactRoot = Join-Path $projectRoot ".artifacts"
 $stage = Join-Path $artifactRoot "l4d2-plugin-players-v$version"
@@ -60,4 +60,3 @@ finally {
 }
 
 Write-Host "Package succeeded: $archive"
-

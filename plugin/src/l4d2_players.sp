@@ -93,6 +93,7 @@ public void OnMapEnd()
 {
 	g_LPMapEnding = true;
 	LP_StopAfkMonitor();
+	LP_CancelAllIdleVerifications();
 	LP_CancelJoinQueue();
 }
 
@@ -114,6 +115,7 @@ public void OnClientPutInServer(int client)
 
 public void OnClientDisconnect(int client)
 {
+	LP_IdleClientDisconnected(client);
 	LP_JoinClientDisconnected(client);
 	LP_RuntimeClientDisconnected(client);
 }
