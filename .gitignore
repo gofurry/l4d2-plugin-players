@@ -1,0 +1,8 @@
+/dist/
+/.artifacts/
+/scripts/config.local.ps1
+*.smx
+*.log
+.DS_Store
+Thumbs.db
+

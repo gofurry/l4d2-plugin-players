@@ -1,0 +1,61 @@
+"Games"
+{
+	"left4dead2"
+	{
+		"Addresses"
+		{
+			"CDirector"
+			{
+				"windows"
+				{
+					"signature" "CDirectorMusicBanks::OnRoundStart"
+					"read" "12"
+				}
+				"linux"
+				{
+					"signature" "TheDirector"
+				}
+				"read" "0"
+			}
+		}
+
+		"Signatures"
+		{
+			"CDirectorMusicBanks::OnRoundStart"
+			{
+				"library" "server"
+				"windows" "\x55\x8B\xEC\x83\xEC\x2A\x56\x57\x8B\xF9\x8B\x0D\x2A\x2A\x2A\x2A\xE8\x2A\x2A\x2A\x2A\x84\xC0\x0F"
+			}
+			"TheDirector"
+			{
+				"library" "server"
+				"linux" "@TheDirector"
+			}
+			"CTerrorPlayer::GoAwayFromKeyboard"
+			{
+				"library" "server"
+				"linux" "@_ZN13CTerrorPlayer18GoAwayFromKeyboardEv"
+				"windows" "\x2A\x2A\x2A\x2A\x2A\x2A\x53\x56\x57\x8B\xF1\x8B\x06\x8B\x90\xC8\x08\x00\x00"
+			}
+			"SurvivorBot::SetHumanSpectator"
+			{
+				"library" "server"
+				"linux" "@_ZN11SurvivorBot17SetHumanSpectatorEP13CTerrorPlayer"
+				"windows" "\x2A\x2A\x2A\x2A\x2A\x2A\x83\xBE\x2A\x2A\x2A\x2A\x00\x7E\x07\x32\xC0\x5E\x5D\xC2\x04\x00\x8B\x0D"
+			}
+			"CTerrorPlayer::TakeOverBot"
+			{
+				"library" "server"
+				"linux" "@_ZN13CTerrorPlayer11TakeOverBotEb"
+				"windows" "\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\xA1\x2A\x2A\x2A\x2A\x33\xC5\x89\x45\xFC\x53\x56\x8D\x85"
+			}
+			"CDirector::AddSurvivorBot"
+			{
+				"library" "server"
+				"linux" "@_ZNK9CDirector14AddSurvivorBotE21SurvivorCharacterType"
+				"windows" "\x55\x8B\xEC\x8B\x89\x2A\x2A\x2A\x2A\x83\xEC\x2A\x56\x8D\x45\xFF"
+			}
+		}
+	}
+}
+

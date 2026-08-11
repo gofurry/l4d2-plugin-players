@@ -1,0 +1,33 @@
+#if defined _l4d2_players_definitions_included
+	#endinput
+#endif
+#define _l4d2_players_definitions_included
+
+#define LP_VERSION "0.3.0"
+#define LP_PREFIX "\x04[Players]\x01"
+#define LP_TEAM_UNASSIGNED 0
+#define LP_TEAM_SPECTATOR 1
+#define LP_TEAM_SURVIVOR 2
+#define LP_MAX_SURVIVORS 16
+#define LP_JOIN_QUEUE_SIZE MAXPLAYERS
+#define LP_CREATE_MAX_FRAMES 64
+#define LP_CREATE_TIMEOUT 1.0
+#define LP_EYE_ACTIVITY_THRESHOLD 0.5
+
+enum LPPlayerState
+{
+	LP_PLAYER_STATE_NONE = 0,
+	LP_PLAYER_STATE_SURVIVOR_ACTIVE,
+	LP_PLAYER_STATE_SURVIVOR_IDLE,
+	LP_PLAYER_STATE_SPECTATOR_FREE
+};
+
+enum LPIdleReason
+{
+	LP_IDLE_REASON_MANUAL = 0,
+	LP_IDLE_REASON_AUTOMATIC,
+	LP_IDLE_REASON_ENGINE
+};
+
+bool g_LPLateLoad;
+bool g_LPMapEnding;
