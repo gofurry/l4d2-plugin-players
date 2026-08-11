@@ -11,16 +11,13 @@ enum struct LPPlayerRuntime
 	float connectedAt;
 	float lastActivityTime;
 	float idleSince;
-	float spectatorSince;
 	float lastEyeAngles[3];
 	bool hasEyeAngles;
 	int lastButtons;
 	int lastWeapon;
 	bool autoIdleWarning;
 	bool idleKickWarning;
-	bool spectatorKickWarning;
 	bool wasIdle;
-	bool wasFreeSpectator;
 	LPPlayersHint playersHint;
 }
 
@@ -34,7 +31,6 @@ void LP_ResetClientRuntime(int client)
 	g_LPPlayers[client].connectedAt = 0.0;
 	g_LPPlayers[client].lastActivityTime = 0.0;
 	g_LPPlayers[client].idleSince = 0.0;
-	g_LPPlayers[client].spectatorSince = 0.0;
 	g_LPPlayers[client].lastEyeAngles[0] = 0.0;
 	g_LPPlayers[client].lastEyeAngles[1] = 0.0;
 	g_LPPlayers[client].lastEyeAngles[2] = 0.0;
@@ -43,9 +39,7 @@ void LP_ResetClientRuntime(int client)
 	g_LPPlayers[client].lastWeapon = 0;
 	g_LPPlayers[client].autoIdleWarning = false;
 	g_LPPlayers[client].idleKickWarning = false;
-	g_LPPlayers[client].spectatorKickWarning = false;
 	g_LPPlayers[client].wasIdle = false;
-	g_LPPlayers[client].wasFreeSpectator = false;
 	g_LPPlayers[client].playersHint = LP_PLAYERS_HINT_NONE;
 }
 
@@ -68,12 +62,9 @@ void LP_ResetMapRuntime()
 		}
 		g_LPPlayers[client].lastActivityTime = now;
 		g_LPPlayers[client].idleSince = 0.0;
-		g_LPPlayers[client].spectatorSince = 0.0;
 		g_LPPlayers[client].autoIdleWarning = false;
 		g_LPPlayers[client].idleKickWarning = false;
-		g_LPPlayers[client].spectatorKickWarning = false;
 		g_LPPlayers[client].wasIdle = false;
-		g_LPPlayers[client].wasFreeSpectator = false;
 		g_LPPlayers[client].hasEyeAngles = false;
 	}
 }

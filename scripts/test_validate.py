@@ -34,7 +34,7 @@ class TranslationValidationTests(unittest.TestCase):
 
     def test_validator_rejects_wrong_format_type(self) -> None:
         sections = []
-        for name in ("AutoIdleWarning", "IdleKickWarning", "SpectatorKickWarning"):
+        for name in ("AutoIdleWarning", "IdleKickWarning"):
             format_type = "{1:f}" if name == "AutoIdleWarning" else "{1:d}"
             sections.append(
                 f'"{name}" {{ "#format" "{format_type}" "en" "{{1}}" "chi" "{{1}}" }}'

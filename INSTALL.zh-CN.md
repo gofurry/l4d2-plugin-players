@@ -18,6 +18,15 @@ sm plugins load l4d2_players
 
 首次加载会生成 `left4dead2/cfg/sourcemod/l4d2_players.cfg`。若 gamedata 缺失或签名不匹配，插件会拒绝加载并在 SourceMod error log 中指出具体条目。
 
+从 v0.3.2 升级时，旧 `l4d2_players.cfg` 不会由 SourceMod 自动删除过期行。v0.3.3 已废弃以下两项，请从旧配置中手动删除：
+
+```cfg
+sm_l4dp_spectator_join_grace_seconds
+sm_l4dp_spectator_kick_seconds
+```
+
+新安装自动生成的配置不再包含这两项。Release 根目录的 `l4d2_players.cfg.example` 也只列出 v0.3.3 仍支持的 CVar。Free Spectator 可无限旁观，不会因时间被 Players 踢出。
+
 ## 2. 推荐 server.cfg
 
 ```cfg

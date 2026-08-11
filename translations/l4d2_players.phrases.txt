@@ -236,13 +236,6 @@
 		"chi"		"你已闲置过久。\n将在 {1} 秒后被踢出服务器。\n输入 !join 返回游戏。"
 	}
 
-	"SpectatorKickWarning"
-	{
-		"#format"	"{1:d}"
-		"en"		"You have not joined the game.\nYou will be kicked in {1} seconds.\nType !join to play."
-		"chi"		"你长时间未加入游戏。\n将在 {1} 秒后被踢出服务器。\n输入 !join 加入游戏。"
-	}
-
 	"IdleKickBroadcast"
 	{
 		"#format"	"{1:N}"

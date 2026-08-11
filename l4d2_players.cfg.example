@@ -1,0 +1,17 @@
+// L4D2 Players v0.3.3 example configuration.
+// Copy desired values to cfg/sourcemod/l4d2_players.cfg after the plugin generates it.
+
+sm_l4dp_enabled "1"
+sm_l4dp_survivor_limit "4"
+sm_l4dp_auto_idle_seconds "120"
+sm_l4dp_auto_idle_warning_seconds "10"
+sm_l4dp_idle_kick_seconds "600"
+sm_l4dp_idle_kick_warning_seconds "60"
+sm_l4dp_afk_hud "1"
+sm_l4dp_afk_admin_kick_immunity "1"
+sm_l4dp_afk_admin_flags "z"
+sm_l4dp_bhop_enabled "1"
+sm_l4dp_bhop_default "0"
+sm_l4dp_csm_enabled "1"
+sm_l4dp_announce_idle_kick "1"
+sm_l4dp_human_team_wipe "1"

@@ -16,7 +16,7 @@ Self-contained player utilities and Survivor session management for Left 4 Dead 
 | `!bhop` | 切换个人自动连跳；偏好由 ClientPrefs 保存 |
 | `!csm` | 在 8 名 Survivor 角色间切换，不持久化 |
 
-AFK Manager 默认在 120 秒无操作后自动 Idle，Idle 600 秒后踢出；Free Spectator 也有独立宽限期与超时。Human Team Wipe 会在所有本轮参与真人真正死亡后杀死剩余普通 Survivor Bot，让游戏自然判定团灭。所有提示提供英文和简体中文翻译。
+AFK Manager 默认在 120 秒无操作后自动 Idle，Idle 600 秒后踢出。Free Spectator 可以无限旁观，不会因旁观时间被本插件踢出。Human Team Wipe 会在所有本轮参与真人真正死亡后杀死剩余普通 Survivor Bot，让游戏自然判定团灭。所有提示提供英文和简体中文翻译。
 
 ## 依赖
 
@@ -40,9 +40,10 @@ Copy-Item scripts/config.example.ps1 scripts/config.local.ps1
 ./scripts/package.ps1
 ```
 
-构建产物位于 `dist/l4d2_players.smx`，Release 包为 `dist/l4d2-plugin-players-v0.3.2.zip`。
+构建产物位于 `dist/l4d2_players.smx`，Release 包为 `dist/l4d2-plugin-players-v0.3.3.zip`。
 
 安装、服务器配置和迁移说明见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。当前实现已完成编译、静态依赖和本机 Windows gamedata 签名验证；多人运行行为必须按 `docs/` 下的清单在测试服验证。
+当前支持的插件 CVar 可参考 [l4d2_players.cfg.example](l4d2_players.cfg.example)。
 
 ## 许可证
 

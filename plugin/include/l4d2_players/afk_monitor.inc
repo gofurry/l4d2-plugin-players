@@ -109,16 +109,13 @@ void LP_UpdateActiveClient(int client, float now)
 	{
 		LP_ClearAfkHint(client);
 	}
-	if (g_LPPlayers[client].wasIdle || g_LPPlayers[client].wasFreeSpectator)
+	if (g_LPPlayers[client].wasIdle)
 	{
 		g_LPPlayers[client].lastActivityTime = now;
 	}
 	g_LPPlayers[client].wasIdle = false;
-	g_LPPlayers[client].wasFreeSpectator = false;
 	g_LPPlayers[client].idleSince = 0.0;
-	g_LPPlayers[client].spectatorSince = 0.0;
 	g_LPPlayers[client].idleKickWarning = false;
-	g_LPPlayers[client].spectatorKickWarning = false;
 
 	if (g_LPAutoIdleSeconds <= 0.0 || !IsPlayerAlive(client))
 	{
@@ -158,10 +155,7 @@ void LP_UpdateIdleClient(int client, float now)
 		g_LPPlayers[client].idleSince = now;
 	}
 	g_LPPlayers[client].wasIdle = true;
-	g_LPPlayers[client].wasFreeSpectator = false;
-	g_LPPlayers[client].spectatorSince = 0.0;
 	g_LPPlayers[client].autoIdleWarning = false;
-	g_LPPlayers[client].spectatorKickWarning = false;
 
 	if (g_LPIdleKickSeconds <= 0.0 || LP_HasAdminKickImmunity(client))
 	{
@@ -195,59 +189,6 @@ void LP_UpdateIdleClient(int client, float now)
 	}
 }
 
-void LP_UpdateFreeSpectator(int client, float now)
-{
-	if (g_LPPlayers[client].playersHint != LP_PLAYERS_HINT_NONE
-		&& g_LPPlayers[client].playersHint != LP_PLAYERS_HINT_SPECTATOR_KICK)
-	{
-		LP_ClearAfkHint(client);
-	}
-	if (!g_LPPlayers[client].wasFreeSpectator || g_LPPlayers[client].spectatorSince <= 0.0)
-	{
-		g_LPPlayers[client].spectatorSince = now;
-	}
-	g_LPPlayers[client].wasFreeSpectator = true;
-	g_LPPlayers[client].wasIdle = false;
-	g_LPPlayers[client].idleSince = 0.0;
-	g_LPPlayers[client].autoIdleWarning = false;
-	g_LPPlayers[client].idleKickWarning = false;
-
-	if (g_LPSpectatorKickSeconds <= 0.0 || LP_HasAdminKickImmunity(client))
-	{
-		g_LPPlayers[client].spectatorKickWarning = false;
-		LP_ClearAfkHint(client);
-		return;
-	}
-
-	float elapsed = now - g_LPPlayers[client].spectatorSince;
-	if (elapsed < g_LPSpectatorGraceSeconds)
-	{
-		g_LPPlayers[client].spectatorKickWarning = false;
-		LP_ClearAfkHint(client);
-		return;
-	}
-	float timeoutElapsed = elapsed - g_LPSpectatorGraceSeconds;
-	float remaining = g_LPSpectatorKickSeconds - timeoutElapsed;
-	if (remaining <= 0.0)
-	{
-		LP_ClearAfkHint(client);
-		LP_Log("Free spectator kick for %N after %.0f seconds.", client, timeoutElapsed);
-		KickClient(client, "Spectator timeout");
-		return;
-	}
-	float warningWindow = g_LPSpectatorKickSeconds < 60.0 ? g_LPSpectatorKickSeconds : 60.0;
-	if (warningWindow > 0.0 && remaining <= warningWindow)
-	{
-		g_LPPlayers[client].spectatorKickWarning = true;
-		LP_ShowSpectatorKickHint(client, RoundToCeil(remaining));
-	}
-	else
-	{
-		g_LPPlayers[client].spectatorKickWarning = false;
-		LP_ClearAfkHint(client);
-	}
-}
-
 public Action LP_TimerAfkMonitor(Handle timer)
 {
 	if (!g_LPEnabled || g_LPMapEnding)
@@ -267,12 +208,10 @@ public Action LP_TimerAfkMonitor(Handle timer)
 		{
 			case LP_PLAYER_STATE_SURVIVOR_ACTIVE: LP_UpdateActiveClient(client, now);
 			case LP_PLAYER_STATE_SURVIVOR_IDLE: LP_UpdateIdleClient(client, now);
-			case LP_PLAYER_STATE_SPECTATOR_FREE: LP_UpdateFreeSpectator(client, now);
 			default:
 			{
 				g_LPPlayers[client].autoIdleWarning = false;
 				g_LPPlayers[client].idleKickWarning = false;
-				g_LPPlayers[client].spectatorKickWarning = false;
 				LP_ClearAfkHint(client);
 			}
 		}

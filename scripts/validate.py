@@ -33,12 +33,11 @@ WINDOWS_SIGNATURES = {
     "CDirector::AddSurvivorBot": "55 8B EC 8B 89 ?? ?? ?? ?? 83 EC ?? 56 8D 45 FF",
 }
 
-EXPECTED_PLUGIN_VERSION = "0.3.2"
+EXPECTED_PLUGIN_VERSION = "0.3.3"
 
 PARAMETERIZED_PHRASES = {
     "AutoIdleWarning": "{1:d}",
     "IdleKickWarning": "{1:d}",
-    "SpectatorKickWarning": "{1:d}",
     "IdleKickBroadcast": "{1:N}",
 }
 
@@ -239,12 +238,13 @@ def validate_afk_hint_sources(root: Path) -> None:
     main_source = (root / "plugin" / "src" / "l4d2_players.sp").read_text(encoding="utf-8")
 
     required_fragments = {
-        "definitions.inc": ("enum LPPlayersHint", "LP_PLAYERS_HINT_AUTO_IDLE", "LP_PLAYERS_HINT_IDLE_KICK", "LP_PLAYERS_HINT_SPECTATOR_KICK"),
+        "definitions.inc": ("enum LPPlayersHint", "LP_PLAYERS_HINT_AUTO_IDLE", "LP_PLAYERS_HINT_IDLE_KICK"),
         "runtime.inc": ("LPPlayersHint playersHint;", "LP_ClearAfkHint(client);"),
         "hud.inc": (
             "void LP_ClearAfkHint(int client)",
             "g_LPPlayers[client].playersHint == LP_PLAYERS_HINT_NONE",
-            'PrintHintText(client, "");',
+            'StartMessageOne("HintText", client, USERMSG_RELIABLE)',
+            'BfWriteString(message, "");',
             "void LP_ClearAllAfkHints()",
             "void LP_ShowAfkHint(int client, LPPlayersHint hint",
         ),
@@ -275,6 +275,9 @@ def validate_afk_hint_sources(root: Path) -> None:
     all_source = "\n".join(contents.values())
     if "ShowSyncHudText" in all_source:
         raise ValueError("L4D2 AFK hints must continue using hint boxes, not ShowSyncHudText")
+    clear_path = hud.split("void LP_ClearAfkHint", 1)[1].split("void LP_ClearAllAfkHints", 1)[0]
+    if 'PrintHintText(client, "")' in clear_path or "%T" in clear_path or "seconds" in clear_path:
+        raise ValueError("AFK hint clearing must send a raw empty HintText without format arguments")
 
 
 def validate_free_spectator_sources(root: Path, phrases: dict[str, dict[str, str]]) -> None:
@@ -309,7 +312,7 @@ def validate_free_spectator_sources(root: Path, phrases: dict[str, dict[str, str
         "LP_STATE_VERIFY_TIMEOUT",
         "LP_SPECTATE_STABLE_FRAMES",
         "LP_HumanTeamWipeLeaveForFreeSpectator(client)",
-        "g_LPPlayers[client].spectatorSince = now",
+        "LP_ClearAfkHint(client)",
     )
     for fragment in required_spectate_fragments:
         if fragment not in spectate:
@@ -325,6 +328,54 @@ def validate_free_spectator_sources(root: Path, phrases: dict[str, dict[str, str
         raise ValueError("chat prefix must be localized as [Notice] / [提示]")
     if '"ChatPrefix", client' not in hud or "LP_PREFIX" in hud:
         raise ValueError("player chat messages must use the localized ChatPrefix phrase")
+
+
+def validate_spectator_kick_removed(root: Path, phrases: dict[str, dict[str, str]]) -> None:
+    source_root = root / "plugin"
+    source = "\n".join(path.read_text(encoding="utf-8") for path in source_root.rglob("*.*"))
+    forbidden = (
+        "sm_l4dp_spectator_join_grace_seconds",
+        "sm_l4dp_spectator_kick_seconds",
+        "g_LPCvarSpectatorGrace",
+        "g_LPCvarSpectatorKickSeconds",
+        "g_LPSpectatorGraceSeconds",
+        "g_LPSpectatorKickSeconds",
+        "spectatorSince",
+        "spectatorKickWarning",
+        "LP_PLAYERS_HINT_SPECTATOR_KICK",
+        "LP_ShowSpectatorKickHint",
+        "LP_UpdateFreeSpectator",
+        'KickClient(client, "Spectator timeout")',
+        "SpectatorKickWarning",
+    )
+    for fragment in forbidden:
+        if fragment in source:
+            raise ValueError(f"removed Spectator Kick source fragment remains: {fragment}")
+    if "SpectatorKickWarning" in phrases:
+        raise ValueError("removed SpectatorKickWarning translation remains")
+    if source.count("KickClient(") != 1 or 'KickClient(client, "Idle timeout")' not in source:
+        raise ValueError("only the existing Idle Kick path may call KickClient")
+
+    config_source = (root / "plugin" / "include" / "l4d2_players" / "config.inc").read_text(
+        encoding="utf-8"
+    )
+    example_config = (root / "l4d2_players.cfg.example").read_text(encoding="utf-8")
+    declared_cvars = set(re.findall(r'CreateConVar\("(sm_l4dp_[^"]+)"', config_source))
+    example_cvars = set(re.findall(r"(?m)^(sm_l4dp_[a-z0-9_]+)\s", example_config))
+    if declared_cvars != example_cvars:
+        raise ValueError(
+            f"example config CVar mismatch; missing={sorted(declared_cvars - example_cvars)}, "
+            f"stale={sorted(example_cvars - declared_cvars)}"
+        )
+
+    checklist = (root / "docs" / "v0.3-test-checklist.md").read_text(encoding="utf-8")
+    for stale in (
+        "sm_l4dp_spectator_join_grace_seconds",
+        "sm_l4dp_spectator_kick_seconds",
+        "Free Spectator Kick",
+    ):
+        if stale in checklist:
+            raise ValueError(f"removed Spectator Kick test remains: {stale}")
 
 
 def compile_signature(spec: str) -> re.Pattern[bytes]:
@@ -363,10 +414,12 @@ def main() -> int:
     validate_state_machine_sources(root)
     validate_afk_hint_sources(root)
     validate_free_spectator_sources(root, phrases)
+    validate_spectator_kick_removed(root, phrases)
     print(f"SourceMod translation SMC validation passed ({len(phrases)} phrase sections).")
     print("Idle/takeover state-machine source invariants passed.")
     print("AFK hint lifecycle source invariants passed.")
     print("Explicit Free Spectator and localized chat-prefix invariants passed.")
+    print("Spectator Kick removal and raw HintText clearing invariants passed.")
     print("Static dependency and gamedata key validation passed.")
 
     if len(sys.argv) == 3 and sys.argv[2]:

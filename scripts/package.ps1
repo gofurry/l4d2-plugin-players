@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$version = "0.3.2"
+$version = "0.3.3"
 $projectRoot = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path
 $artifactRoot = Join-Path $projectRoot ".artifacts"
 $stage = Join-Path $artifactRoot "l4d2-plugin-players-v$version"
@@ -29,7 +29,7 @@ New-Item -ItemType Directory -Path $pluginDirectory, $gamedataDirectory, $transl
 Copy-Item -LiteralPath (Join-Path $dist "l4d2_players.smx") -Destination $pluginDirectory
 Copy-Item -LiteralPath (Join-Path $projectRoot "gamedata\\l4d2_players.txt") -Destination $gamedataDirectory
 Copy-Item -LiteralPath (Join-Path $projectRoot "translations\\l4d2_players.phrases.txt") -Destination $translationDirectory
-foreach ($document in @("README.md", "INSTALL.zh-CN.md", "CHANGELOG.md", "LICENSE")) {
+foreach ($document in @("README.md", "INSTALL.zh-CN.md", "CHANGELOG.md", "LICENSE", "l4d2_players.cfg.example")) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $document) -Destination $stage
 }
 
@@ -46,7 +46,7 @@ try {
         "left4dead2/addons/sourcemod/plugins/l4d2_players.smx",
         "left4dead2/addons/sourcemod/gamedata/l4d2_players.txt",
         "left4dead2/addons/sourcemod/translations/l4d2_players.phrases.txt",
-        "README.md", "INSTALL.zh-CN.md", "CHANGELOG.md", "LICENSE"
+        "README.md", "INSTALL.zh-CN.md", "CHANGELOG.md", "LICENSE", "l4d2_players.cfg.example"
     )
     foreach ($entry in $required) {
         if ($entries -notcontains $entry) { throw "Release archive is missing: $entry" }

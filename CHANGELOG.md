@@ -1,12 +1,19 @@
 # Changelog
 
+## 0.3.3 - 2026-08-11
+
+- Removed the Spectator Kick feature, its two ConVars, warning HUD, runtime state, translations, and kick path; Free Spectators may now remain indefinitely.
+- Preserved explicit `!spec` / `!spectate`, the player-menu entry, Free Spectator recognition, and Free Spectator `!join` takeover/Bot-creation behavior.
+- Fixed occasional numeric remnants after Auto Idle by clearing the L4D2 `HintText` usermessage directly without format strings or countdown arguments.
+- Documented removal of stale `sm_l4dp_spectator_join_grace_seconds` and `sm_l4dp_spectator_kick_seconds` entries from upgraded configuration files.
+
 ## 0.3.2 - 2026-08-11
 
 - Added configurable Human Team Wipe behavior while retaining `sb_all_bot_game 1` for all-human Idle play.
 - Tracks humans who participated as Survivors during the round and distinguishes Active/Idle effective survival from ordinary Bots.
 - Performs a delayed post-death check and kills remaining Survivor Bots only after every participating human has truly died.
 - Added `sm_l4dp_human_team_wipe`, enabled by default.
-- Fixed stale AFK, Idle Kick, and Free Spectator Kick hint boxes by explicitly clearing Players-owned hints when activity or player state leaves the current countdown phase.
+- Fixed stale AFK and Idle Kick hint boxes by explicitly clearing Players-owned hints when activity or player state leaves the current countdown phase.
 - Added explicit `!spec` / `!spectate` Free Spectator transitions, including verified release of Engine Idle Bot ownership and a player-menu entry.
 - Localized the chat prefix as `[Notice]` for English and `[提示]` for Simplified Chinese clients.
 
@@ -21,7 +28,7 @@
 ## 0.3.0 - 2026-08-11
 
 - Added one-second AFK manager with activity detection and automatic engine Idle.
-- Added Idle and Free Spectator timeout HUDs and kicks.
+- Added Idle timeout HUD and kick handling.
 - Added administrator kick immunity and server policy diagnostics.
 - Added full English and Simplified Chinese translations.
 - Fixed translation resources to use standard multi-line SMC sections and typed `#format` placeholders.

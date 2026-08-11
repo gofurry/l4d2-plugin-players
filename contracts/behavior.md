@@ -20,11 +20,11 @@
 
 ## Free Spectator
 
-`!spec`/`!spectate`与`!afk`完全分离。进入 Free Spectator 后真人必须在 team 1，且不得存在指向其 userid 的 Survivor Bot 绑定。从 Engine Idle 进入时，原 Bot 的 `m_humanSpectatorUserID` 被显式清零，并在有界验证中确认 Bot 仍为 Survivor Bot。成功后立即进入现有 Free Spectator 宽限和 Kick 计时。
+`!spec`/`!spectate`与`!afk`完全分离。进入 Free Spectator 后真人必须在 team 1，且不得存在指向其 userid 的 Survivor Bot 绑定。从 Engine Idle 进入时，原 Bot 的 `m_humanSpectatorUserID` 被显式清零，并在有界验证中确认 Bot 仍为 Survivor Bot。Free Spectator 不启动任何超时、警告 HUD 或 Kick，可无限旁观。
 
 ## AFK
 
-活动会重置 Auto Idle 时间，但不会延长 Free Spectator 占槽时间。任何合法原生 Idle 来源都进入统一 Idle Kick 计时。管理员只豁免 Kick，不豁免 Auto Idle。
+活动会重置 Auto Idle 时间。任何合法原生 Idle 来源都进入统一 Idle Kick 计时。管理员只豁免 Idle Kick，不豁免 Auto Idle。
 
 ## Human Team Wipe
 

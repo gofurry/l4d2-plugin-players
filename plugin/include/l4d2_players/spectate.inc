@@ -133,12 +133,9 @@ void LP_FinishFreeSpectate(int client, bool success)
 
 	if (success)
 	{
-		float now = GetGameTime();
-		g_LPPlayers[client].lastActivityTime = now;
+		g_LPPlayers[client].lastActivityTime = GetGameTime();
 		g_LPPlayers[client].idleSince = 0.0;
-		g_LPPlayers[client].spectatorSince = now;
 		g_LPPlayers[client].wasIdle = false;
-		g_LPPlayers[client].wasFreeSpectator = true;
 		LP_ClearAfkHint(client);
 		LP_HumanTeamWipeLeaveForFreeSpectator(client);
 		LP_Print(client, "NowSpectating");

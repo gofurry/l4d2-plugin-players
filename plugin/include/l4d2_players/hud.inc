@@ -33,13 +33,17 @@ void LP_ClearAfkHint(int client)
 
 	if (IsClientInGame(client) && !IsFakeClient(client))
 	{
-		PrintHintText(client, "");
+		Handle message = StartMessageOne("HintText", client, USERMSG_RELIABLE);
+		if (message != null)
+		{
+			BfWriteString(message, "");
+			EndMessage();
+		}
 	}
 	switch (g_LPPlayers[client].playersHint)
 	{
 		case LP_PLAYERS_HINT_AUTO_IDLE: g_LPPlayers[client].autoIdleWarning = false;
 		case LP_PLAYERS_HINT_IDLE_KICK: g_LPPlayers[client].idleKickWarning = false;
-		case LP_PLAYERS_HINT_SPECTATOR_KICK: g_LPPlayers[client].spectatorKickWarning = false;
 	}
 	g_LPPlayers[client].playersHint = LP_PLAYERS_HINT_NONE;
 }
@@ -72,9 +76,4 @@ void LP_ShowAutoIdleHint(int client, int seconds)
 void LP_ShowIdleKickHint(int client, int seconds)
 {
 	LP_ShowAfkHint(client, LP_PLAYERS_HINT_IDLE_KICK, "IdleKickWarning", seconds);
-}
-
-void LP_ShowSpectatorKickHint(int client, int seconds)
-{
-	LP_ShowAfkHint(client, LP_PLAYERS_HINT_SPECTATOR_KICK, "SpectatorKickWarning", seconds);
 }
