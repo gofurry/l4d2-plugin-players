@@ -19,6 +19,7 @@ int g_LPTakeoverFrames[MAXPLAYERS + 1];
 float g_LPTakeoverStartedAt[MAXPLAYERS + 1];
 bool g_LPTakeoverImmediate[MAXPLAYERS + 1];
 bool g_LPBindImmediate[MAXPLAYERS + 1];
+bool g_LPTakeoverNewlyCreatedBot[MAXPLAYERS + 1];
 LPTakeoverPath g_LPTakeoverPath[MAXPLAYERS + 1];
 
 int LP_GetBotHumanSpectatorUserId(int bot, int fallback = -1)
@@ -63,6 +64,7 @@ void LP_ResetTakeoverState(int client)
 	g_LPTakeoverStartedAt[client] = 0.0;
 	g_LPTakeoverImmediate[client] = false;
 	g_LPBindImmediate[client] = false;
+	g_LPTakeoverNewlyCreatedBot[client] = false;
 	g_LPTakeoverPath[client] = LP_TAKEOVER_PATH_NONE;
 }
 
@@ -118,7 +120,7 @@ void LP_CancelAllTakeovers()
 	}
 }
 
-bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path)
+bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path, bool newlyCreatedBot = false)
 {
 	if (!LP_IsHumanClient(client) || !LP_IsSurvivorBot(bot) || LP_IsTakeoverPendingForClient(client))
 	{
@@ -139,6 +141,7 @@ bool LP_BeginTakeover(int client, int bot, LPTakeoverPath path)
 	g_LPTakeoverFrames[client] = 0;
 	g_LPTakeoverStartedAt[client] = GetGameTime();
 	g_LPTakeoverPath[client] = path;
+	g_LPTakeoverNewlyCreatedBot[client] = path == LP_TAKEOVER_PATH_BIND_FREE_BOT && newlyCreatedBot;
 	g_LPBindImmediate[client] = true;
 	g_LPBotReservation[bot] = g_LPTakeoverSerial[client];
 
@@ -160,9 +163,9 @@ bool LP_ReturnFromIdleBot(int client, int bot)
 	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_RETURN_IDLE);
 }
 
-bool LP_BindAndTakeOverBot(int client, int bot)
+bool LP_BindAndTakeOverBot(int client, int bot, bool newlyCreatedBot = false)
 {
-	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_BIND_FREE_BOT);
+	return LP_BeginTakeover(client, bot, LP_TAKEOVER_PATH_BIND_FREE_BOT, newlyCreatedBot);
 }
 
 void LP_FinishTakeover(int client, bool success)
@@ -171,6 +174,7 @@ void LP_FinishTakeover(int client, bool success)
 	int initialHumanSpec = g_LPTakeoverInitialHumanSpec[client];
 	bool sdkImmediate = g_LPTakeoverImmediate[client];
 	bool bindImmediate = g_LPBindImmediate[client];
+	bool newlyCreatedBot = g_LPTakeoverNewlyCreatedBot[client];
 	LPTakeoverPath path = g_LPTakeoverPath[client];
 
 	if (bot >= 1 && bot <= MaxClients)
@@ -186,8 +190,14 @@ void LP_FinishTakeover(int client, bool success)
 		LP_ClearIdleKickHint(client);
 		LP_HumanTeamWipeObserveClient(client);
 		LP_Print(client, "JoinedGame");
-		LP_Log("Takeover verified: path=%s client=%N bot=%d.",
-			path == LP_TAKEOVER_PATH_RETURN_IDLE ? "return_idle" : "bind_free_bot", client, bot);
+		LP_Log("Takeover verified: path=%s bot_source=%s client=%N bot=%d.",
+			path == LP_TAKEOVER_PATH_RETURN_IDLE ? "return_idle" : "bind_free_bot",
+			path == LP_TAKEOVER_PATH_RETURN_IDLE ? "owned_idle_bot" : (newlyCreatedBot ? "newly_created_bot" : "existing_bot"),
+			client, bot);
+		if (newlyCreatedBot)
+		{
+			LP_ScheduleMidJoinSetup(client);
+		}
 	}
 	else
 	{

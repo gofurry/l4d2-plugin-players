@@ -1,8 +1,11 @@
-// L4D2 Players v0.3.5 example configuration.
+// L4D2 Players v1.0.0 example configuration.
 // Copy desired values to cfg/sourcemod/l4d2_players.cfg after the plugin generates it.
 
 sm_l4dp_enabled "1"
 sm_l4dp_survivor_limit "4"
+sm_l4dp_auto_join "1"
+sm_l4dp_midjoin_spawn_near_player "1"
+sm_l4dp_midjoin_loadout "1"
 sm_l4dp_auto_idle_seconds "120"
 sm_l4dp_auto_idle_warning_seconds "10"
 sm_l4dp_idle_kick_seconds "600"

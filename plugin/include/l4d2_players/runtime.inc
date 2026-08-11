@@ -18,12 +18,18 @@ enum struct LPPlayerRuntime
 	bool autoIdleHudVisible;
 	bool idleKickWarning;
 	bool wasIdle;
+	bool autoJoinEligible;
+	bool autoJoinCompleted;
+	bool autoJoinSuppressed;
+	int autoJoinAttempts;
+	Handle autoJoinTimer;
 }
 
 LPPlayerRuntime g_LPPlayers[MAXPLAYERS + 1];
 
 void LP_ResetClientRuntime(int client)
 {
+	delete g_LPPlayers[client].autoJoinTimer;
 	g_LPPlayers[client].connected = false;
 	g_LPPlayers[client].cookiesLoaded = false;
 	g_LPPlayers[client].bhopEnabled = g_LPBhopDefault;
@@ -39,6 +45,11 @@ void LP_ResetClientRuntime(int client)
 	g_LPPlayers[client].autoIdleHudVisible = false;
 	g_LPPlayers[client].idleKickWarning = false;
 	g_LPPlayers[client].wasIdle = false;
+	g_LPPlayers[client].autoJoinEligible = false;
+	g_LPPlayers[client].autoJoinCompleted = false;
+	g_LPPlayers[client].autoJoinSuppressed = false;
+	g_LPPlayers[client].autoJoinAttempts = 0;
+	g_LPPlayers[client].autoJoinTimer = null;
 }
 
 void LP_ResetRuntime()

@@ -208,6 +208,7 @@ Action LP_CommandSpectate(int client)
 	{
 		return Plugin_Handled;
 	}
+	LP_SuppressAutoJoinForConnection(client);
 	LP_RecordActivity(client);
 	LP_StopAutoIdleHud(client);
 	if (!g_LPEnabled)

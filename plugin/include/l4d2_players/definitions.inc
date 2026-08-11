@@ -3,7 +3,7 @@
 #endif
 #define _l4d2_players_definitions_included
 
-#define LP_VERSION "0.3.5"
+#define LP_VERSION "1.0.0"
 #define LP_TEAM_UNASSIGNED 0
 #define LP_TEAM_SPECTATOR 1
 #define LP_TEAM_SURVIVOR 2
@@ -13,6 +13,9 @@
 #define LP_STATE_VERIFY_TIMEOUT 1.0
 #define LP_SPECTATE_STABLE_FRAMES 4
 #define LP_EYE_ACTIVITY_THRESHOLD 0.5
+#define LP_AUTO_JOIN_INITIAL_DELAY 2.5
+#define LP_AUTO_JOIN_RETRY_DELAY 1.0
+#define LP_AUTO_JOIN_MAX_ATTEMPTS 3
 
 enum LPPlayerState
 {

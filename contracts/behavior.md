@@ -18,6 +18,16 @@
 
 优先级不可更改：自己的 Idle Bot、无人绑定且存活的 Survivor Bot、新创建的 Survivor Bot。自己的 Idle Bot 保留现有 human/Bot 关系，只调用内部 takeover；Free Spectator 接管普通 Bot 才执行 unassigned、bind、takeover。两条路径均以有界验证后的 Active Survivor 状态为成功依据。Join 请求全局串行；需要扩容时通过 NextBot 创建、team 2 切换及必要的 RoundRespawn 同步取得真实 Bot index，再进入现有 bind + takeover 状态机。只有创建新 Bot 会增加 Survivor 数并受 `sm_l4dp_survivor_limit` 约束，官方 `survivor_limit` 不得由 Players 修改。
 
+## Auto Join
+
+Auto Join 只针对真正进入游戏的真人，每次连接只发起一次现有 `LP_JoinSurvivor` 流程；连接/地图过渡最多有界尝试 3 次。主动 `!spec` 是连接级明确选择，后续 changelevel 不得清除抑制状态或再次自动加入。手动 `!join` 始终可用。Bot、SourceTV 和 late-load 时已经在线的玩家不会被当成新连接自动加入。
+
+## Newly-created 5+ mid-join
+
+只有 Join 队列本次调用 Players 无上限创建函数所得 Bot 才可设置 `newly_created_bot` pending context。只有 takeover 最终验证为 Active Survivor 后才安排放置/装备；即时 SDKCall 返回值不具权威性。`return_idle`、existing Bot、CSM、复活和过图路径不得设置该 context。
+
+放置优先随机选择存活、未倒地、未挂边的真人 Survivor，没有时选择存活 Bot；候选点必须通过向下地面、坡度、world bounds 和 player hull 检查。无安全点时保留引擎位置且 takeover 仍成功。装备清理后只给予随机 T1 pump/chrome/SMG/silenced SMG、地图已实例化 melee script（合法集合 fallback，最终 pistol）以及 pills/adrenaline；不得给 medkit、throwable、ammo upgrade 或 T2 武器。任何后处理失败均不得反转 takeover 成功状态。
+
 ## Free Spectator
 
 `!spec`/`!spectate`与`!afk`完全分离。进入 Free Spectator 后真人必须在 team 1，且不得存在指向其 userid 的 Survivor Bot 绑定。从 Engine Idle 进入时，原 Bot 的 `m_humanSpectatorUserID` 被显式清零，并在有界验证中确认 Bot 仍为 Survivor Bot。Free Spectator 不启动任何超时、警告 HUD 或 Kick，可无限旁观。

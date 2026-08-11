@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0 - 2026-08-11
+
+- Added default-on, once-per-connection Auto Join with a 2.5-second initial delay and at most three bounded attempts; it calls the existing `LP_JoinSurvivor`/Join queue exclusively.
+- Preserves an explicit `!spec` choice across changelevel for the rest of the connection while keeping manual `!join` available.
+- Records whether a `bind_free_bot` takeover uses an existing Bot or a Bot newly created by Players.
+- Applies placement and loadout only after a newly-created Bot takeover is verified as an Active Survivor; Idle returns and existing-Bot takeovers remain untouched.
+- Added hull/ground/out-of-world checked placement around a randomly selected healthy human teammate, with living Bot fallback and safe failure that preserves the engine origin.
+- Added the restricted mid-join loadout: random T1 pump/chrome/SMG/silenced SMG, map-observed melee with maintained legal fallback and pistol safety fallback, plus pills/adrenaline.
+- Added `sm_l4dp_auto_join`, `sm_l4dp_midjoin_spawn_near_player`, and `sm_l4dp_midjoin_loadout`, all enabled by default.
+- Declared replacement of overlapping MultiSlots, CreateSurvivorBot, and legacy AFK dead-bot fix behavior without adding a third-party runtime dependency.
+
 ## 0.3.5 - 2026-08-11
 
 - Replaced the Director-based Bot request with self-contained `NextBotCreatePlayerBot<SurvivorBot>` creation followed by team assignment and `CTerrorPlayer::RoundRespawn` when needed.

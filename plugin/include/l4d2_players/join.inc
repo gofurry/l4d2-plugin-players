@@ -130,9 +130,10 @@ void LP_ProcessJoinQueue()
 		RequestFrame(LP_FrameContinueJoinQueue);
 		return;
 	}
+	LP_Log("Mid-join Survivor created for %N: bot=%d.", client, bot);
 
 	g_LPBotReservation[bot] = serial;
-	if (!LP_BindAndTakeOverBot(client, bot))
+	if (!LP_BindAndTakeOverBot(client, bot, true))
 	{
 		g_LPBotReservation[bot] = 0;
 		LP_Print(client, "TakeoverFailed");
@@ -228,6 +229,7 @@ Action LP_CommandJoin(int client)
 {
 	if (LP_IsHumanClient(client))
 	{
+		LP_CompleteAutoJoinForConnection(client);
 		LP_RecordActivity(client);
 		LP_StopAutoIdleHud(client);
 		if (!g_LPEnabled)

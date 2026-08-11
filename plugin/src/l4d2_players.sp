@@ -13,11 +13,13 @@
 #include <l4d2_players/engine>
 #include <l4d2_players/state>
 #include <l4d2_players/hud>
+#include <l4d2_players/midjoin>
 #include <l4d2_players/survivor_engine>
 #include <l4d2_players/idle>
 #include <l4d2_players/join>
 #include <l4d2_players/spectate>
 #include <l4d2_players/human_team_wipe>
+#include <l4d2_players/auto_join>
 #include <l4d2_players/suicide>
 #include <l4d2_players/bhop>
 #include <l4d2_players/character>
@@ -91,6 +93,7 @@ public void OnMapStart()
 	LP_StopAllAutoIdleHuds();
 	LP_ClearAllIdleKickHints();
 	LP_HumanTeamWipeMapStart();
+	LP_AutoJoinMapStart();
 	LP_PrecacheCharacterModels();
 	LP_ResetMapRuntime();
 	LP_StartAfkMonitor();
@@ -103,6 +106,7 @@ public void OnMapEnd()
 	LP_CancelAllIdleVerifications();
 	LP_CancelJoinQueue();
 	LP_CancelAllSpectateTransitions();
+	LP_AutoJoinMapEnd();
 	LP_HumanTeamWipeMapEnd();
 }
 
@@ -110,6 +114,7 @@ public void OnPluginEnd()
 {
 	LP_StopAfkMonitor();
 	LP_CancelAllSpectateTransitions();
+	LP_CancelAllAutoJoinTimers();
 	LP_CancelHumanTeamWipeCheck();
 	LP_ShutdownEngine();
 }
@@ -122,6 +127,7 @@ public void OnClientConnected(int client)
 public void OnClientPutInServer(int client)
 {
 	LP_RuntimeClientPutInServer(client);
+	LP_AutoJoinClientPutInServer(client);
 }
 
 public void OnClientDisconnect(int client)
@@ -131,6 +137,7 @@ public void OnClientDisconnect(int client)
 	LP_IdleClientDisconnected(client);
 	LP_JoinClientDisconnected(client);
 	LP_SpectateClientDisconnected(client);
+	LP_CancelAutoJoinTimer(client);
 	LP_HumanTeamWipeClientDisconnected(client);
 	LP_RuntimeClientDisconnected(client);
 }

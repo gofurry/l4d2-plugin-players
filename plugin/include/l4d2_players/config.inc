@@ -17,6 +17,9 @@ ConVar g_LPCvarBhopDefault;
 ConVar g_LPCvarCsmEnabled;
 ConVar g_LPCvarAnnounceIdleKick;
 ConVar g_LPCvarHumanTeamWipe;
+ConVar g_LPCvarAutoJoin;
+ConVar g_LPCvarMidJoinSpawnNearPlayer;
+ConVar g_LPCvarMidJoinLoadout;
 
 bool g_LPEnabled;
 int g_LPSurvivorLimit;
@@ -32,6 +35,9 @@ bool g_LPBhopDefault;
 bool g_LPCsmEnabled;
 bool g_LPAnnounceIdleKick;
 bool g_LPHumanTeamWipeEnabled;
+bool g_LPAutoJoinEnabled;
+bool g_LPMidJoinSpawnNearPlayer;
+bool g_LPMidJoinLoadout;
 
 void LP_CreateConfig()
 {
@@ -49,6 +55,9 @@ void LP_CreateConfig()
 	g_LPCvarCsmEnabled = CreateConVar("sm_l4dp_csm_enabled", "1", "Allow survivor character selection.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarAnnounceIdleKick = CreateConVar("sm_l4dp_announce_idle_kick", "1", "Announce idle kicks to other players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_LPCvarHumanTeamWipe = CreateConVar("sm_l4dp_human_team_wipe", "1", "Kill remaining Survivor Bots after all participating humans have died.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_LPCvarAutoJoin = CreateConVar("sm_l4dp_auto_join", "1", "Automatically attempt to join each new human client to Survivors once per connection.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_LPCvarMidJoinSpawnNearPlayer = CreateConVar("sm_l4dp_midjoin_spawn_near_player", "1", "Place newly created 5+ Survivors near a living teammate after verified takeover.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_LPCvarMidJoinLoadout = CreateConVar("sm_l4dp_midjoin_loadout", "1", "Give the Players mid-join T1 loadout only after a newly created 5+ Survivor takeover.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
 	g_LPCvarEnabled.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarSurvivorLimit.AddChangeHook(LP_ConVarChanged);
@@ -64,6 +73,9 @@ void LP_CreateConfig()
 	g_LPCvarCsmEnabled.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarAnnounceIdleKick.AddChangeHook(LP_ConVarChanged);
 	g_LPCvarHumanTeamWipe.AddChangeHook(LP_ConVarChanged);
+	g_LPCvarAutoJoin.AddChangeHook(LP_ConVarChanged);
+	g_LPCvarMidJoinSpawnNearPlayer.AddChangeHook(LP_ConVarChanged);
+	g_LPCvarMidJoinLoadout.AddChangeHook(LP_ConVarChanged);
 }
 
 public void LP_ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
@@ -115,6 +127,13 @@ void LP_ApplyConfiguration()
 	g_LPCsmEnabled = g_LPCvarCsmEnabled.BoolValue;
 	g_LPAnnounceIdleKick = g_LPCvarAnnounceIdleKick.BoolValue;
 	g_LPHumanTeamWipeEnabled = g_LPCvarHumanTeamWipe.BoolValue;
+	g_LPAutoJoinEnabled = g_LPCvarAutoJoin.BoolValue;
+	g_LPMidJoinSpawnNearPlayer = g_LPCvarMidJoinSpawnNearPlayer.BoolValue;
+	g_LPMidJoinLoadout = g_LPCvarMidJoinLoadout.BoolValue;
+	if (!g_LPEnabled || !g_LPAutoJoinEnabled)
+	{
+		LP_CancelAllAutoJoinTimers();
+	}
 	if (!g_LPEnabled || !g_LPAfkHud)
 	{
 		LP_StopAllAutoIdleHuds();

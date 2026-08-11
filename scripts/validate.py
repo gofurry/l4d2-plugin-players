@@ -39,7 +39,7 @@ WINDOWS_SIGNATURES = {
     "CTerrorPlayer::RoundRespawn": "56 8B F1 E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 75",
 }
 
-EXPECTED_PLUGIN_VERSION = "0.3.5"
+EXPECTED_PLUGIN_VERSION = "1.0.0"
 
 PARAMETERIZED_PHRASES = {
     "AutoIdleWarning": "{1:d}",
@@ -302,6 +302,145 @@ def validate_unlimited_survivor_creation(root: Path) -> None:
             raise ValueError(f"removed Director/official survivor_limit path remains: {forbidden}")
 
 
+def validate_auto_join_and_midjoin(root: Path) -> None:
+    include_root = root / "plugin" / "include" / "l4d2_players"
+    config = (include_root / "config.inc").read_text(encoding="utf-8")
+    runtime = (include_root / "runtime.inc").read_text(encoding="utf-8")
+    auto_join = (include_root / "auto_join.inc").read_text(encoding="utf-8")
+    spectate = (include_root / "spectate.inc").read_text(encoding="utf-8")
+    join = (include_root / "join.inc").read_text(encoding="utf-8")
+    survivor_engine = (include_root / "survivor_engine.inc").read_text(encoding="utf-8")
+    midjoin = (include_root / "midjoin.inc").read_text(encoding="utf-8")
+    main_source = (root / "plugin" / "src" / "l4d2_players.sp").read_text(encoding="utf-8")
+
+    required_cvars = (
+        'CreateConVar("sm_l4dp_auto_join", "1"',
+        'CreateConVar("sm_l4dp_midjoin_spawn_near_player", "1"',
+        'CreateConVar("sm_l4dp_midjoin_loadout", "1"',
+    )
+    for fragment in required_cvars:
+        if fragment not in config:
+            raise ValueError(f"v1.0 default-enabled ConVar missing: {fragment}")
+
+    for field in (
+        "bool autoJoinEligible;",
+        "bool autoJoinCompleted;",
+        "bool autoJoinSuppressed;",
+        "int autoJoinAttempts;",
+        "Handle autoJoinTimer;",
+    ):
+        if field not in runtime:
+            raise ValueError(f"connection-level Auto Join runtime field missing: {field}")
+    map_reset = runtime.split("void LP_ResetMapRuntime", 1)[1].split(
+        "void LP_RuntimeClientConnected", 1
+    )[0]
+    for preserved in ("autoJoinSuppressed", "autoJoinCompleted", "autoJoinEligible"):
+        if preserved in map_reset:
+            raise ValueError(f"changelevel must preserve connection-level Auto Join choice: {preserved}")
+
+    required_auto_join = (
+        "LP_AUTO_JOIN_INITIAL_DELAY 2.5",
+        "LP_AUTO_JOIN_MAX_ATTEMPTS 3",
+        "LP_AutoJoinClientPutInServer",
+        "IsFakeClient(client)",
+        "IsClientSourceTV(client)",
+        "CreateTimer(delay, LP_TimerAutoJoin",
+        "TIMER_FLAG_NO_MAPCHANGE",
+        "LP_JoinSurvivor(client);",
+        'LP_Log("Auto join requested for %N.", client);',
+    )
+    definitions = (include_root / "definitions.inc").read_text(encoding="utf-8")
+    auto_join_combined = definitions + "\n" + auto_join
+    for fragment in required_auto_join:
+        if fragment not in auto_join_combined:
+            raise ValueError(f"Auto Join invariant missing: {fragment}")
+    if auto_join.count("LP_JoinSurvivor(client);") != 1:
+        raise ValueError("Auto Join must call the existing LP_JoinSurvivor path exactly once")
+    for forbidden in (
+        "LP_BindAndTakeOverBot",
+        "LP_ReturnFromIdleBot",
+        "LP_CreateUnlimitedSurvivorBot",
+        "LP_EngineCreateSurvivorBot",
+        "LP_EngineTakeOverBot",
+    ):
+        if forbidden in auto_join:
+            raise ValueError(f"Auto Join must not duplicate the Join/takeover/create state machine: {forbidden}")
+    if "LP_SuppressAutoJoinForConnection(client);" not in spectate:
+        raise ValueError("explicit !spec does not suppress Auto Join for the connection")
+    if "LP_CompleteAutoJoinForConnection(client);" not in join:
+        raise ValueError("manual !join does not cancel the outstanding Auto Join timer")
+    if "LP_AutoJoinClientPutInServer(client);" not in main_source:
+        raise ValueError("OnClientPutInServer does not schedule Auto Join")
+
+    if 'LP_BindAndTakeOverBot(client, bot, true)' not in join:
+        raise ValueError("newly created Join Bot does not set the mid-join takeover context")
+    if join.count('LP_BindAndTakeOverBot(client, bot, true)') != 1:
+        raise ValueError("only the newly created Join Bot may set the mid-join takeover context")
+    if "bool g_LPTakeoverNewlyCreatedBot[MAXPLAYERS + 1];" not in survivor_engine:
+        raise ValueError("pending takeover does not record newly-created Bot context")
+    for fragment in (
+        "bool newlyCreatedBot = false",
+        "g_LPTakeoverNewlyCreatedBot[client]",
+        'newlyCreatedBot ? "newly_created_bot" : "existing_bot"',
+    ):
+        if fragment not in survivor_engine:
+            raise ValueError(f"new/existing takeover context invariant missing: {fragment}")
+    takeover_success = survivor_engine.split("if (success)", 1)[1].split("\n\telse", 1)[0]
+    if "LP_ScheduleMidJoinSetup(client);" not in takeover_success:
+        raise ValueError("mid-join setup is not gated on verified takeover success")
+    if "if (newlyCreatedBot)" not in takeover_success:
+        raise ValueError("verified takeover success does not gate setup on newly-created Bot context")
+
+    required_midjoin = (
+        "bool LP_PlaceMidJoinSurvivor(int client)",
+        "bool LP_GiveMidJoinLoadout(int client)",
+        "LP_FindMidJoinPlacementTarget",
+        "LP_IsActiveSurvivor(teammate)",
+        "LP_IsSurvivorBot(teammate)",
+        '"m_isIncapacitated"',
+        '"m_isHangingFromLedge"',
+        "TR_TraceRayFilterEx",
+        "TR_TraceHullFilterEx",
+        "TR_PointOutsideWorld",
+        "TeleportEntity(client, safeOrigin",
+        "LP_RemoveMidJoinDefaultEquipment(client);",
+        'CreateEntityByName("weapon_melee")',
+        'DispatchKeyValue(entity, "melee_script_name", script)',
+        'GetEntPropString(entity, Prop_Data, "m_strMapSetScriptName"',
+        'GivePlayerItem(client, "weapon_pistol")',
+        'LP_Log("Mid-join placement: client=%N target=%N success=%d."',
+        'LP_Log("Mid-join loadout applied: client=%N primary=%s melee=%s medicine=%s."',
+    )
+    for fragment in required_midjoin:
+        if fragment not in midjoin:
+            raise ValueError(f"newly-created 5+ mid-join invariant missing: {fragment}")
+    for item in (
+        "weapon_pumpshotgun",
+        "weapon_shotgun_chrome",
+        "weapon_smg",
+        "weapon_smg_silenced",
+        "weapon_pain_pills",
+        "weapon_adrenaline",
+    ):
+        if f'"{item}"' not in midjoin:
+            raise ValueError(f"required mid-join loadout item missing: {item}")
+    for forbidden_item in (
+        "weapon_first_aid_kit",
+        "weapon_molotov",
+        "weapon_pipe_bomb",
+        "weapon_vomitjar",
+        "weapon_upgradepack_explosive",
+        "weapon_upgradepack_incendiary",
+        "weapon_autoshotgun",
+        "weapon_rifle",
+        "weapon_hunting_rifle",
+    ):
+        if forbidden_item in midjoin:
+            raise ValueError(f"forbidden mid-join loadout item present: {forbidden_item}")
+    if main_source.count("#include <l4d2_players/midjoin>") != 1:
+        raise ValueError("midjoin module is not included exactly once")
+
+
 def validate_afk_hint_sources(root: Path) -> None:
     definitions = (root / "plugin" / "include" / "l4d2_players" / "definitions.inc").read_text(
         encoding="utf-8"
@@ -554,12 +693,14 @@ def main() -> int:
     phrases = validate_translation(translation_path)
     validate_state_machine_sources(root)
     validate_unlimited_survivor_creation(root)
+    validate_auto_join_and_midjoin(root)
     validate_afk_hint_sources(root)
     validate_free_spectator_sources(root, phrases)
     validate_spectator_kick_removed(root, phrases)
     print(f"SourceMod translation SMC validation passed ({len(phrases)} phrase sections).")
     print("Idle/takeover state-machine source invariants passed.")
     print("Shared unlimited Survivor Bot creation invariants passed.")
+    print("Connection-level Auto Join and newly-created 5+ mid-join isolation invariants passed.")
     print("Auto Idle CenterText and Idle Kick HintText lifecycle invariants passed.")
     print("Explicit Free Spectator and localized chat-prefix invariants passed.")
     print("Spectator Kick removal and current configuration invariants passed.")

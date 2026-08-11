@@ -18,14 +18,14 @@ sm plugins load l4d2_players
 
 首次加载会生成 `left4dead2/cfg/sourcemod/l4d2_players.cfg`。若 gamedata 缺失或签名不匹配，插件会拒绝加载并在 SourceMod error log 中指出具体条目。
 
-从 v0.3.2 升级时，旧 `l4d2_players.cfg` 不会由 SourceMod 自动删除过期行。v0.3.3 已废弃以下两项，请从旧配置中手动删除：
+升级安装时，旧 `l4d2_players.cfg` 不会由 SourceMod 自动删除过期行。以下旁观踢出 CVar 已废弃，请从旧配置中手动删除：
 
 ```cfg
 sm_l4dp_spectator_join_grace_seconds
 sm_l4dp_spectator_kick_seconds
 ```
 
-新安装自动生成的配置不再包含这两项。Release 根目录的 `l4d2_players.cfg.example` 也只列出 v0.3.5 仍支持的 CVar。Free Spectator 可无限旁观，不会因时间被 Players 踢出。
+新安装自动生成的配置不包含这两项。Release 根目录的 `l4d2_players.cfg.example` 只列出 v1.0.0 仍支持的 CVar。Free Spectator 可无限旁观，不会因时间被 Players 踢出。
 
 ## 2. 推荐 server.cfg
 
@@ -67,13 +67,27 @@ sm_l4dp_addbot 1
 
 `sm_l4dp_addbot [count]` 默认创建 1 个，调用与 `!join` 完全相同的内部创建函数，不会突破 Players 上限，也不会进入普通玩家菜单。创建失败会在 SourceMod error log 中记录 SDKCall、容量、client slot、team 或 respawn 阶段。
 
-## 4. 迁移旧插件
+## 4. 自动加入与 5+ 中途出生
 
-开发和首次测试期间继续保留现有 MultiSlots、CreateSurvivorBot 与 AFK dead-bot fix。只有完成 `docs/v0.1-test-checklist.md` 中的 4/5/8/16 人测试后，才逐个卸载旧插件并重新测试。
+默认配置：
+
+```cfg
+sm_l4dp_auto_join "1"
+sm_l4dp_midjoin_spawn_near_player "1"
+sm_l4dp_midjoin_loadout "1"
+```
+
+Auto Join 在真人完全进入游戏约 2.5 秒后复用 `!join` 路径，过渡状态最多进行 3 次有界尝试。容量已满时玩家保持 Free Spectator；主动 `!spec` 会抑制本次连接剩余时间（包括 changelevel 后）的 Auto Join，手动 `!join` 不受影响。
+
+出生位置和装备只应用于“没有自己的 Idle Bot、没有现有空闲 Bot、由 Players 新建 Bot、takeover 最终成功”的 Join。安全位置检查失败时保留引擎出生点；近战优先复用地图中实际存在的 melee script，再尝试内置合法集合，全部失败时至少给予 pistol。该策略绝不会清理 `!afk` → `!join` 或接管现有 Bot 的武器。
+
+## 5. 迁移旧插件
+
+v1.0.0 已覆盖 MultiSlots 的 Survivor 加入、CreateSurvivorBot / `l4d_CreateSurvivorBot` 的无上限 Bot 创建以及旧 AFK dead-bot fix。正式部署前应停用这些重叠插件，避免它们同时换队、创建 Bot 或修复同一 Idle 关系。
 
 Players 自身不依赖 Left4DHooks，但服务器上的其他 bugfix 可能依赖它；是否删除必须单独审计。
 
-## 5. 更新 gamedata
+## 6. 更新 gamedata
 
 游戏更新后若插件报告签名失败：
 
