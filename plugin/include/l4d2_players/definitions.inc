@@ -4,7 +4,6 @@
 #define _l4d2_players_definitions_included
 
 #define LP_VERSION "0.3.2"
-#define LP_PREFIX "\x04[Players]\x01"
 #define LP_TEAM_UNASSIGNED 0
 #define LP_TEAM_SPECTATOR 1
 #define LP_TEAM_SURVIVOR 2
@@ -14,6 +13,7 @@
 #define LP_CREATE_TIMEOUT 1.0
 #define LP_STATE_VERIFY_MAX_FRAMES 64
 #define LP_STATE_VERIFY_TIMEOUT 1.0
+#define LP_SPECTATE_STABLE_FRAMES 4
 #define LP_EYE_ACTIVITY_THRESHOLD 0.5
 
 enum LPPlayerState
@@ -29,6 +29,14 @@ enum LPIdleReason
 	LP_IDLE_REASON_MANUAL = 0,
 	LP_IDLE_REASON_AUTOMATIC,
 	LP_IDLE_REASON_ENGINE
+};
+
+enum LPPlayersHint
+{
+	LP_PLAYERS_HINT_NONE = 0,
+	LP_PLAYERS_HINT_AUTO_IDLE,
+	LP_PLAYERS_HINT_IDLE_KICK,
+	LP_PLAYERS_HINT_SPECTATOR_KICK
 };
 
 bool g_LPLateLoad;

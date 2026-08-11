@@ -11,12 +11,16 @@
 
 - 只有活着、未被特感控制的 Active Survivor 可以手动或自动 Idle。
 - 倒地和挂边仍视为活着；允许 Idle。
-- Idle 必须由 `GoAwayFromKeyboard` 建立原生关系，并在下一帧验证。
+- Idle 必须由 `GoAwayFromKeyboard` 建立原生关系，并通过有界多帧验证。
 - 没有临时客户端槽时明确失败，不踢其他玩家。
 
 ## Join
 
 优先级不可更改：自己的 Idle Bot、无人绑定且存活的 Survivor Bot、新创建的 Survivor Bot。自己的 Idle Bot 保留现有 human/Bot 关系，只调用内部 takeover；Free Spectator 接管普通 Bot 才执行 unassigned、bind、takeover。两条路径均以有界验证后的 Active Survivor 状态为成功依据。Bot 创建请求全局串行；超时或请求者离线不会无限重试。只有创建新 Bot 会增加 Survivor 数并受 `sm_l4dp_survivor_limit` 约束。
+
+## Free Spectator
+
+`!spec`/`!spectate`与`!afk`完全分离。进入 Free Spectator 后真人必须在 team 1，且不得存在指向其 userid 的 Survivor Bot 绑定。从 Engine Idle 进入时，原 Bot 的 `m_humanSpectatorUserID` 被显式清零，并在有界验证中确认 Bot 仍为 Survivor Bot。成功后立即进入现有 Free Spectator 宽限和 Kick 计时。
 
 ## AFK
 

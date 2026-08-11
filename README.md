@@ -2,7 +2,7 @@
 
 Self-contained player utilities and Survivor session management for Left 4 Dead 2.
 
-`L4D2 Players` 为求生之路 2 服务器提供统一的玩家菜单、原生 Idle、重新加入、自杀、个人自动连跳、角色切换和 AFK 管理。插件自行封装 Survivor Bot 创建、human/bot 绑定与 takeover，不依赖 Left4DHooks、MultiSlots、CreateSurvivorBot 或 Stats。
+`L4D2 Players` 为求生之路 2 服务器提供统一的玩家菜单、原生 Idle、Free Spectator、重新加入、自杀、个人自动连跳、角色切换和 AFK 管理。插件自行封装 Survivor Bot 创建、human/bot 绑定与 takeover，不依赖 Left4DHooks、MultiSlots、CreateSurvivorBot 或 Stats。
 
 ## 功能
 
@@ -10,6 +10,7 @@ Self-contained player utilities and Survivor session management for Left 4 Dead 
 |---|---|
 | `!player` / `!players` / `!p` | 打开玩家菜单 |
 | `!afk` | 将当前 Survivor 交给 Bot，进入原生 Idle |
+| `!spec` / `!spectate` | 解除 Idle Bot 归属并进入真正的 Free Spectator |
 | `!join` | 接回自己的 Bot、接管空闲 Bot，或创建新的 Survivor Bot |
 | `!zs` | 当前 Survivor 立即自杀 |
 | `!bhop` | 切换个人自动连跳；偏好由 ClientPrefs 保存 |

@@ -42,7 +42,7 @@ bool LP_CanGoIdle(int client, bool notify)
 
 bool LP_GoIdle(int client, LPIdleReason reason, bool notify = true)
 {
-	if (!g_LPEnabled || !LP_CanGoIdle(client, notify))
+	if (!g_LPEnabled || LP_IsSpectatePendingForClient(client) || !LP_CanGoIdle(client, notify))
 	{
 		return false;
 	}
@@ -123,6 +123,7 @@ public void LP_FrameVerifyIdle(any serial)
 		LPIdleReason reason = g_LPIdleVerifyReason[stateClient];
 		g_LPPlayers[stateClient].idleSince = GetGameTime();
 		g_LPPlayers[stateClient].wasIdle = true;
+		LP_ClearAfkHint(stateClient);
 		LP_ResetIdleVerification(stateClient);
 		LP_HumanTeamWipeObserveClient(stateClient);
 		LP_Print(stateClient, "NowIdle");
@@ -151,6 +152,11 @@ public void LP_FrameVerifyIdle(any serial)
 public Action LP_EventPlayerDeathPre(Event event, const char[] name, bool dontBroadcast)
 {
 	int bot = GetClientOfUserId(event.GetInt("userid"));
+	if (LP_IsHumanClient(bot))
+	{
+		LP_ClearAfkHint(bot);
+		return Plugin_Continue;
+	}
 	if (!LP_IsSurvivorBot(bot))
 	{
 		return Plugin_Continue;

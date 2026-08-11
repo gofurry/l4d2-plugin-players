@@ -80,6 +80,7 @@ public void LP_ConVarChanged(ConVar convar, const char[] oldValue, const char[] 
 	if (!g_LPEnabled)
 	{
 		LP_CancelJoinQueue();
+		LP_CancelAllSpectateTransitions();
 	}
 }
 
@@ -124,6 +125,10 @@ void LP_ApplyConfiguration()
 	g_LPCsmEnabled = g_LPCvarCsmEnabled.BoolValue;
 	g_LPAnnounceIdleKick = g_LPCvarAnnounceIdleKick.BoolValue;
 	g_LPHumanTeamWipeEnabled = g_LPCvarHumanTeamWipe.BoolValue;
+	if (!g_LPEnabled || !g_LPAfkHud)
+	{
+		LP_ClearAllAfkHints();
+	}
 
 	char flags[32];
 	g_LPCvarAdminFlags.GetString(flags, sizeof(flags));

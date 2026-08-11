@@ -9,6 +9,8 @@ void LP_RegisterCommands()
 	RegConsoleCmd("sm_players", LP_CommandPlayerMenu);
 	RegConsoleCmd("sm_p", LP_CommandPlayerMenu);
 	RegConsoleCmd("sm_afk", LP_CommandAfkPublic);
+	RegConsoleCmd("sm_spec", LP_CommandSpectatePublic);
+	RegConsoleCmd("sm_spectate", LP_CommandSpectatePublic);
 	RegConsoleCmd("sm_join", LP_CommandJoinPublic);
 	RegConsoleCmd("sm_zs", LP_CommandSuicidePublic);
 	RegConsoleCmd("sm_bhop", LP_CommandBhopPublic);
@@ -33,6 +35,8 @@ void LP_ShowPlayerMenu(int client)
 	menu.SetTitle(text);
 	Format(text, sizeof(text), "%T", "MenuIdle", client);
 	menu.AddItem("afk", text);
+	Format(text, sizeof(text), "%T", "MenuSpectate", client);
+	menu.AddItem("spectate", text);
 	Format(text, sizeof(text), "%T", "MenuJoin", client);
 	menu.AddItem("join", text);
 	Format(text, sizeof(text), "%T", "MenuSuicide", client);
@@ -59,6 +63,7 @@ public int LP_PlayerMenuHandler(Menu menu, MenuAction action, int client, int it
 	char info[16];
 	menu.GetItem(item, info, sizeof(info));
 	if (StrEqual(info, "afk")) LP_CommandAfk(client);
+	else if (StrEqual(info, "spectate")) LP_CommandSpectate(client);
 	else if (StrEqual(info, "join")) LP_CommandJoin(client);
 	else if (StrEqual(info, "suicide")) LP_CommandSuicide(client);
 	else if (StrEqual(info, "bhop")) LP_CommandBhop(client);
@@ -77,8 +82,8 @@ public Action LP_CommandPlayerMenu(int client, int args)
 }
 
 public Action LP_CommandAfkPublic(int client, int args) { return LP_CommandAfk(client); }
+public Action LP_CommandSpectatePublic(int client, int args) { return LP_CommandSpectate(client); }
 public Action LP_CommandJoinPublic(int client, int args) { return LP_CommandJoin(client); }
 public Action LP_CommandSuicidePublic(int client, int args) { return LP_CommandSuicide(client); }
 public Action LP_CommandBhopPublic(int client, int args) { return LP_CommandBhop(client); }
 public Action LP_CommandCharacterPublic(int client, int args) { return LP_CommandCharacter(client); }
-

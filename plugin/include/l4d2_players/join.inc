@@ -245,6 +245,11 @@ bool LP_JoinSurvivor(int client)
 		LP_Print(client, "AlreadyPlaying");
 		return false;
 	}
+	if (LP_IsSpectatePendingForClient(client))
+	{
+		LP_Print(client, "SpectatePending");
+		return false;
+	}
 
 	if (LP_IsTakeoverPendingForClient(client))
 	{

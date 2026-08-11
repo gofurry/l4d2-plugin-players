@@ -6,6 +6,9 @@
 - Tracks humans who participated as Survivors during the round and distinguishes Active/Idle effective survival from ordinary Bots.
 - Performs a delayed post-death check and kills remaining Survivor Bots only after every participating human has truly died.
 - Added `sm_l4dp_human_team_wipe`, enabled by default.
+- Fixed stale AFK, Idle Kick, and Free Spectator Kick hint boxes by explicitly clearing Players-owned hints when activity or player state leaves the current countdown phase.
+- Added explicit `!spec` / `!spectate` Free Spectator transitions, including verified release of Engine Idle Bot ownership and a player-menu entry.
+- Localized the chat prefix as `[Notice]` for English and `[提示]` for Simplified Chinese clients.
 
 ## 0.3.1 - 2026-08-11
 

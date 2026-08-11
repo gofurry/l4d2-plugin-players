@@ -168,6 +168,20 @@ void LP_HumanTeamWipeClientDisconnected(int client)
 	}
 }
 
+void LP_HumanTeamWipeLeaveForFreeSpectator(int client)
+{
+	if (client < 1 || client > MaxClients)
+	{
+		return;
+	}
+	int participant = LP_FindHumanParticipant(GetClientUserId(client));
+	if (participant >= 0 && !g_LPHumanParticipantDied[participant])
+	{
+		g_LPHumanParticipantUserId[participant] = 0;
+		g_LPHumanParticipantDied[participant] = false;
+	}
+}
+
 void LP_ScheduleHumanTeamWipeCheck()
 {
 	if (!g_LPEnabled || !g_LPHumanTeamWipeEnabled || !g_LPHumanWipeRoundActive

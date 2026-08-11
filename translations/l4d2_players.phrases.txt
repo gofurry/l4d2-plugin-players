@@ -1,5 +1,11 @@
 "Phrases"
 {
+	"ChatPrefix"
+	{
+		"en"		"[Notice]"
+		"chi"		"[提示]"
+	}
+
 	"MenuTitle"
 	{
 		"en"		"L4D2 Players"
@@ -10,6 +16,12 @@
 	{
 		"en"		"Go idle"
 		"chi"		"闲置"
+	}
+
+	"MenuSpectate"
+	{
+		"en"		"Spectate"
+		"chi"		"旁观"
 	}
 
 	"MenuJoin"
@@ -94,6 +106,30 @@
 	{
 		"en"		"You are now idle. Type !join to return."
 		"chi"		"你现在处于闲置状态，输入 !join 返回游戏。"
+	}
+
+	"AlreadySpectating"
+	{
+		"en"		"You are already a free spectator."
+		"chi"		"你已经是普通旁观者。"
+	}
+
+	"SpectatePending"
+	{
+		"en"		"A player state transition is already in progress."
+		"chi"		"玩家状态正在切换，请稍候。"
+	}
+
+	"NowSpectating"
+	{
+		"en"		"You are now a free spectator. Type !join to play."
+		"chi"		"你已进入普通旁观，输入 !join 加入游戏。"
+	}
+
+	"SpectateFailed"
+	{
+		"en"		"Unable to safely enter free spectator mode."
+		"chi"		"无法安全进入普通旁观状态。"
 	}
 
 	"AlreadyPlaying"

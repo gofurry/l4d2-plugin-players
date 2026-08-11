@@ -21,6 +21,7 @@ enum struct LPPlayerRuntime
 	bool spectatorKickWarning;
 	bool wasIdle;
 	bool wasFreeSpectator;
+	LPPlayersHint playersHint;
 }
 
 LPPlayerRuntime g_LPPlayers[MAXPLAYERS + 1];
@@ -45,6 +46,7 @@ void LP_ResetClientRuntime(int client)
 	g_LPPlayers[client].spectatorKickWarning = false;
 	g_LPPlayers[client].wasIdle = false;
 	g_LPPlayers[client].wasFreeSpectator = false;
+	g_LPPlayers[client].playersHint = LP_PLAYERS_HINT_NONE;
 }
 
 void LP_ResetRuntime()
@@ -110,5 +112,8 @@ void LP_RecordActivity(int client)
 	}
 	g_LPPlayers[client].lastActivityTime = GetGameTime();
 	g_LPPlayers[client].autoIdleWarning = false;
+	if (g_LPPlayers[client].playersHint == LP_PLAYERS_HINT_AUTO_IDLE)
+	{
+		LP_ClearAfkHint(client);
+	}
 }
-

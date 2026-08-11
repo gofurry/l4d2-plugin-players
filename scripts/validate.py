@@ -217,6 +217,116 @@ def validate_state_machine_sources(root: Path) -> None:
             raise ValueError(f"human team wipe must not directly restart/change maps: {forbidden}")
 
 
+def validate_afk_hint_sources(root: Path) -> None:
+    definitions = (root / "plugin" / "include" / "l4d2_players" / "definitions.inc").read_text(
+        encoding="utf-8"
+    )
+    runtime = (root / "plugin" / "include" / "l4d2_players" / "runtime.inc").read_text(
+        encoding="utf-8"
+    )
+    hud = (root / "plugin" / "include" / "l4d2_players" / "hud.inc").read_text(
+        encoding="utf-8"
+    )
+    afk = (root / "plugin" / "include" / "l4d2_players" / "afk_monitor.inc").read_text(
+        encoding="utf-8"
+    )
+    idle = (root / "plugin" / "include" / "l4d2_players" / "idle.inc").read_text(
+        encoding="utf-8"
+    )
+    takeover = (
+        root / "plugin" / "include" / "l4d2_players" / "survivor_engine.inc"
+    ).read_text(encoding="utf-8")
+    main_source = (root / "plugin" / "src" / "l4d2_players.sp").read_text(encoding="utf-8")
+
+    required_fragments = {
+        "definitions.inc": ("enum LPPlayersHint", "LP_PLAYERS_HINT_AUTO_IDLE", "LP_PLAYERS_HINT_IDLE_KICK", "LP_PLAYERS_HINT_SPECTATOR_KICK"),
+        "runtime.inc": ("LPPlayersHint playersHint;", "LP_ClearAfkHint(client);"),
+        "hud.inc": (
+            "void LP_ClearAfkHint(int client)",
+            "g_LPPlayers[client].playersHint == LP_PLAYERS_HINT_NONE",
+            'PrintHintText(client, "");',
+            "void LP_ClearAllAfkHints()",
+            "void LP_ShowAfkHint(int client, LPPlayersHint hint",
+        ),
+        "afk_monitor.inc": (
+            'HookEvent("player_team", LP_EventPlayerTeam',
+            "LP_ClearAllAfkHints();",
+            "default:",
+            "LP_ClearAfkHint(client);",
+        ),
+        "idle.inc": ("LP_ClearAfkHint(stateClient);",),
+        "survivor_engine.inc": ("if (success)", "LP_ClearAfkHint(client);"),
+        "l4d2_players.sp": ("public void OnMapEnd()", "public void OnClientDisconnect(int client)", "LP_ClearAfkHint(client);"),
+    }
+    contents = {
+        "definitions.inc": definitions,
+        "runtime.inc": runtime,
+        "hud.inc": hud,
+        "afk_monitor.inc": afk,
+        "idle.inc": idle,
+        "survivor_engine.inc": takeover,
+        "l4d2_players.sp": main_source,
+    }
+    for filename, fragments in required_fragments.items():
+        for fragment in fragments:
+            if fragment not in contents[filename]:
+                raise ValueError(f"AFK hint lifecycle fragment missing from {filename}: {fragment}")
+
+    all_source = "\n".join(contents.values())
+    if "ShowSyncHudText" in all_source:
+        raise ValueError("L4D2 AFK hints must continue using hint boxes, not ShowSyncHudText")
+
+
+def validate_free_spectator_sources(root: Path, phrases: dict[str, dict[str, str]]) -> None:
+    commands = (root / "plugin" / "include" / "l4d2_players" / "commands.inc").read_text(
+        encoding="utf-8"
+    )
+    spectate = (root / "plugin" / "include" / "l4d2_players" / "spectate.inc").read_text(
+        encoding="utf-8"
+    )
+    join = (root / "plugin" / "include" / "l4d2_players" / "join.inc").read_text(
+        encoding="utf-8"
+    )
+    hud = (root / "plugin" / "include" / "l4d2_players" / "hud.inc").read_text(
+        encoding="utf-8"
+    )
+
+    for fragment in (
+        'RegConsoleCmd("sm_spec", LP_CommandSpectatePublic)',
+        'RegConsoleCmd("sm_spectate", LP_CommandSpectatePublic)',
+        'menu.AddItem("spectate", text)',
+        'StrEqual(info, "spectate")',
+    ):
+        if fragment not in commands:
+            raise ValueError(f"explicit Free Spectator command/menu fragment missing: {fragment}")
+
+    required_spectate_fragments = (
+        'SetEntProp(bot, Prop_Send, "m_humanSpectatorUserID", 0)',
+        "ChangeClientTeam(client, LP_TEAM_SPECTATOR)",
+        "LP_FindIdleBotForHuman(stateClient) == 0",
+        "originalBotPreserved",
+        "LP_STATE_VERIFY_MAX_FRAMES",
+        "LP_STATE_VERIFY_TIMEOUT",
+        "LP_SPECTATE_STABLE_FRAMES",
+        "LP_HumanTeamWipeLeaveForFreeSpectator(client)",
+        "g_LPPlayers[client].spectatorSince = now",
+    )
+    for fragment in required_spectate_fragments:
+        if fragment not in spectate:
+            raise ValueError(f"Free Spectator state invariant missing: {fragment}")
+    if "LP_CommandAfk" in spectate or "LP_GoIdle" in spectate:
+        raise ValueError("!spec must not alias or route through the native Idle command")
+
+    if "LP_ReturnFromIdleBot(client, bot)" not in join or "LP_BindAndTakeOverBot(client, bot)" not in join:
+        raise ValueError("!join must retain distinct Engine Idle and Free Spectator takeover paths")
+
+    prefix = phrases.get("ChatPrefix", {})
+    if prefix.get("en") != "[Notice]" or prefix.get("chi") != "[提示]":
+        raise ValueError("chat prefix must be localized as [Notice] / [提示]")
+    if '"ChatPrefix", client' not in hud or "LP_PREFIX" in hud:
+        raise ValueError("player chat messages must use the localized ChatPrefix phrase")
+
+
 def compile_signature(spec: str) -> re.Pattern[bytes]:
     chunks: list[bytes] = []
     for token in spec.split():
@@ -251,8 +361,12 @@ def main() -> int:
 
     phrases = validate_translation(translation_path)
     validate_state_machine_sources(root)
+    validate_afk_hint_sources(root)
+    validate_free_spectator_sources(root, phrases)
     print(f"SourceMod translation SMC validation passed ({len(phrases)} phrase sections).")
     print("Idle/takeover state-machine source invariants passed.")
+    print("AFK hint lifecycle source invariants passed.")
+    print("Explicit Free Spectator and localized chat-prefix invariants passed.")
     print("Static dependency and gamedata key validation passed.")
 
     if len(sys.argv) == 3 and sys.argv[2]:
